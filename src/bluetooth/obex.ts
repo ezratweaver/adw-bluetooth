@@ -3,12 +3,12 @@ import GLib from "gi://GLib?version=2.0";
 import GObject from "gi://GObject?version=2.0";
 import { sessionBus } from "./bluetooth.js";
 
-export const OBEX_SERVICE = "org.bluez.obex";
-export const OBEX_CLIENT_INTERFACE = "org.bluez.obex.Client1";
-export const OBEX_TRANSFER_INTERFACE = "org.bluez.obex.Transfer1";
-export const OBEX_OBJECT_PUSH_INTERFACE = "org.bluez.obex.ObjectPush1";
-export const OBEX_AGENT_INTERFACE = "org.bluez.obex.Agent1";
-export const OBEX_AGENT_MANAGER_INTERFACE = "org.bluez.obex.AgentManager1";
+export const ORG_BLUEZ_OBEX = "org.bluez.obex";
+export const OBEX_CLIENT_1 = "org.bluez.obex.Client1";
+export const OBEX_TRANSFER_1 = "org.bluez.obex.Transfer1";
+export const OBEX_OBJECT_PUSH_1 = "org.bluez.obex.ObjectPush1";
+export const OBEX_AGENT_1 = "org.bluez.obex.Agent1";
+export const OBEX_AGENT_MANAGER1 = "org.bluez.obex.AgentManager1";
 
 export class ObexManager extends GObject.Object {
     private clientProxy: Gio.DBusProxy;
@@ -50,9 +50,9 @@ export class ObexManager extends GObject.Object {
             sessionBus,
             Gio.DBusProxyFlags.NONE,
             null,
-            OBEX_SERVICE,
+            ORG_BLUEZ_OBEX,
             "/org/bluez/obex",
-            OBEX_CLIENT_INTERFACE,
+            OBEX_CLIENT_1,
             null,
         );
 
@@ -181,9 +181,9 @@ export class ObexManager extends GObject.Object {
                 sessionBus,
                 Gio.DBusProxyFlags.NONE,
                 null,
-                OBEX_SERVICE,
+                ORG_BLUEZ_OBEX,
                 sessionPath,
-                OBEX_OBJECT_PUSH_INTERFACE,
+                OBEX_OBJECT_PUSH_1,
                 null,
             );
 
@@ -215,9 +215,9 @@ export class ObexManager extends GObject.Object {
                 sessionBus,
                 Gio.DBusProxyFlags.NONE,
                 null,
-                OBEX_SERVICE,
+                ORG_BLUEZ_OBEX,
                 transferPath,
-                OBEX_TRANSFER_INTERFACE,
+                OBEX_TRANSFER_1,
                 null,
             );
 
@@ -259,7 +259,7 @@ export class ObexManager extends GObject.Object {
         }
 
         const agentInterface =
-            this.agentNodeInfo.lookup_interface(OBEX_AGENT_INTERFACE);
+            this.agentNodeInfo.lookup_interface(OBEX_AGENT_1);
         if (!agentInterface) {
             throw new Error("Failed to lookup OBEX Agent interface");
         }
@@ -274,9 +274,9 @@ export class ObexManager extends GObject.Object {
 
         try {
             sessionBus.call_sync(
-                OBEX_SERVICE,
+                ORG_BLUEZ_OBEX,
                 "/org/bluez/obex",
-                OBEX_AGENT_MANAGER_INTERFACE,
+                OBEX_AGENT_MANAGER1,
                 "RegisterAgent",
                 new GLib.Variant("(o)", [this.agentPath]),
                 null,
@@ -300,9 +300,9 @@ export class ObexManager extends GObject.Object {
 
             try {
                 sessionBus.call_sync(
-                    OBEX_SERVICE,
+                    ORG_BLUEZ_OBEX,
                     "/org/bluez/obex",
-                    OBEX_AGENT_MANAGER_INTERFACE,
+                    OBEX_AGENT_MANAGER1,
                     "UnregisterAgent",
                     new GLib.Variant("(o)", [this.agentPath]),
                     null,

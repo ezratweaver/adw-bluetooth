@@ -1,14 +1,14 @@
 import Gio from "gi://Gio?version=2.0";
 import GObject from "gi://GObject?version=2.0";
 import GLib from "gi://GLib?version=2.0";
-import { BLUEZ_SERVICE, DBUS_PROPERTIES_SET, systemBus } from "./bluetooth.js";
+import { ORG_BLUEZ, DBUS_PROPERTIES_SET, systemBus } from "./bluetooth.js";
 import {
     incrementDeviceConnectionCount,
     getDeviceConnectionCount,
 } from "../gsettings.js";
 import { getDeviceTypeFromClass } from "./device-metadata.js";
 
-export const DEVICE_INTERFACE = "org.bluez.Device1";
+export const BLUEZ_DEVICE_1 = "org.bluez.Device1";
 
 interface DeviceProps {
     devicePath: string;
@@ -142,9 +142,9 @@ export class Device extends GObject.Object {
             systemBus,
             Gio.DBusProxyFlags.NONE,
             null,
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             this._devicePath,
-            DEVICE_INTERFACE,
+            BLUEZ_DEVICE_1,
             null,
         );
 
@@ -254,7 +254,7 @@ export class Device extends GObject.Object {
         this.deviceProxy.call_sync(
             DBUS_PROPERTIES_SET,
             new GLib.Variant("(ssv)", [
-                DEVICE_INTERFACE,
+                BLUEZ_DEVICE_1,
                 "Trusted",
                 new GLib.Variant("b", true),
             ]),

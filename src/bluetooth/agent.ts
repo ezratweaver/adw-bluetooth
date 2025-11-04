@@ -1,10 +1,10 @@
 import Gio from "gi://Gio?version=2.0";
 import GLib from "gi://GLib?version=2.0";
 import GObject from "gi://GObject?version=2.0";
-import { BLUEZ_SERVICE, systemBus } from "./bluetooth.js";
+import { ORG_BLUEZ, systemBus } from "./bluetooth.js";
 
-export const AGENT_INTERFACE = "org.bluez.Agent1";
-export const AGENT_MANAGER_INTERFACE = "org.bluez.AgentManager1";
+export const BLUEZ_AGENT_1 = "org.bluez.Agent1";
+export const BLUEZ_AGENT_MANAGER_1 = "org.bluez.AgentManager1";
 
 export class BluetoothAgent extends GObject.Object {
     private agentPath: string = "/com/ezratweaver/AdwBluetooth/agent";
@@ -87,7 +87,7 @@ export class BluetoothAgent extends GObject.Object {
         }
 
         const agentInterface =
-            this.agentNodeInfo.lookup_interface(AGENT_INTERFACE);
+            this.agentNodeInfo.lookup_interface(BLUEZ_AGENT_1);
         if (!agentInterface) {
             throw new Error("Failed to lookup Agent interface");
         }
@@ -102,9 +102,9 @@ export class BluetoothAgent extends GObject.Object {
 
         // Register agent with BlueZ
         systemBus.call_sync(
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             "/org/bluez",
-            AGENT_MANAGER_INTERFACE,
+            BLUEZ_AGENT_MANAGER_1,
             "RegisterAgent",
             new GLib.Variant("(os)", [this.agentPath, "DisplayYesNo"]),
             null,
@@ -115,9 +115,9 @@ export class BluetoothAgent extends GObject.Object {
 
         // Request default agent
         systemBus.call_sync(
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             "/org/bluez",
-            AGENT_MANAGER_INTERFACE,
+            BLUEZ_AGENT_MANAGER_1,
             "RequestDefaultAgent",
             new GLib.Variant("(o)", [this.agentPath]),
             null,
@@ -134,9 +134,9 @@ export class BluetoothAgent extends GObject.Object {
 
             try {
                 systemBus.call_sync(
-                    BLUEZ_SERVICE,
+                    ORG_BLUEZ,
                     "/org/bluez",
-                    AGENT_MANAGER_INTERFACE,
+                    BLUEZ_AGENT_MANAGER_1,
                     "UnregisterAgent",
                     new GLib.Variant("(o)", [this.agentPath]),
                     null,

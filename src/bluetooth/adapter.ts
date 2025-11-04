@@ -1,9 +1,9 @@
 import Gio from "gi://Gio?version=2.0";
 import GObject from "gi://GObject?version=2.0";
 import GLib from "gi://GLib?version=2.0";
-import { Device, DEVICE_INTERFACE } from "./device.js";
+import { Device, BLUEZ_DEVICE_1 } from "./device.js";
 import {
-    BLUEZ_SERVICE,
+    ORG_BLUEZ,
     DBUS_OBJECT_MANAGER,
     DBUS_PROPERTIES_SET,
     systemBus,
@@ -11,7 +11,7 @@ import {
 import { BluetoothAgent } from "./agent.js";
 import { ObexManager } from "./obex.js";
 
-export const ADAPTER_INTERFACE = "org.bluez.Adapter1";
+export const BLUEZ_ADAPTER_1 = "org.bluez.Adapter1";
 
 export class Adapter extends GObject.Object {
     private adapterPath: string;
@@ -66,9 +66,9 @@ export class Adapter extends GObject.Object {
             systemBus,
             Gio.DBusProxyFlags.NONE,
             null,
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             this.adapterPath,
-            ADAPTER_INTERFACE,
+            BLUEZ_ADAPTER_1,
             null,
         );
 
@@ -120,7 +120,7 @@ export class Adapter extends GObject.Object {
 
     private _syncSavedDevices(): void {
         systemBus.signal_subscribe(
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             DBUS_OBJECT_MANAGER,
             "InterfacesAdded",
             "/",
@@ -134,7 +134,7 @@ export class Adapter extends GObject.Object {
 
                 if (
                     path.includes(this.adapterPath) &&
-                    interfaces[DEVICE_INTERFACE]
+                    interfaces[BLUEZ_DEVICE_1]
                 ) {
                     log(`New device discovered ${path}`);
 
@@ -162,7 +162,7 @@ export class Adapter extends GObject.Object {
         );
 
         systemBus.signal_subscribe(
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             DBUS_OBJECT_MANAGER,
             "InterfacesRemoved",
             "/",
@@ -176,7 +176,7 @@ export class Adapter extends GObject.Object {
 
                 if (
                     path.includes(this.adapterPath) &&
-                    interfaces.includes(DEVICE_INTERFACE)
+                    interfaces.includes(BLUEZ_DEVICE_1)
                 ) {
                     log(`Device getting removed ${path}`);
 
@@ -196,7 +196,7 @@ export class Adapter extends GObject.Object {
         );
 
         const result = systemBus.call_sync(
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             "/",
             DBUS_OBJECT_MANAGER,
             "GetManagedObjects",
@@ -212,10 +212,7 @@ export class Adapter extends GObject.Object {
         ];
 
         for (const [path, interfaces] of Object.entries(objects)) {
-            if (
-                path.includes(this.adapterPath) &&
-                interfaces[DEVICE_INTERFACE]
-            ) {
+            if (path.includes(this.adapterPath) && interfaces[BLUEZ_DEVICE_1]) {
                 this.devicePaths.push(path);
 
                 let device: Device;
@@ -281,7 +278,7 @@ export class Adapter extends GObject.Object {
         this.adapterProxy.call_sync(
             DBUS_PROPERTIES_SET,
             new GLib.Variant("(ssv)", [
-                ADAPTER_INTERFACE,
+                BLUEZ_ADAPTER_1,
                 "Powered",
                 new GLib.Variant("b", powered),
             ]),

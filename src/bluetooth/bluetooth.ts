@@ -1,8 +1,7 @@
 import Gio from "gi://Gio";
-import { Adapter, ADAPTER_INTERFACE } from "./adapter.js";
+import { Adapter, BLUEZ_ADAPTER_1 } from "./adapter.js";
 
-export const BLUEZ_SERVICE = "org.bluez";
-
+export const ORG_BLUEZ = "org.bluez";
 export const DBUS_OBJECT_MANAGER = "org.freedesktop.DBus.ObjectManager";
 export const DBUS_PROPERTIES_SET = "org.freedesktop.DBus.Properties.Set";
 
@@ -44,7 +43,7 @@ export class BluetoothManager {
         const objectManager = Gio.DBusObjectManagerClient.new_for_bus_sync(
             Gio.BusType.SYSTEM,
             Gio.DBusObjectManagerClientFlags.NONE,
-            BLUEZ_SERVICE,
+            ORG_BLUEZ,
             "/",
             null,
             null,
@@ -53,7 +52,7 @@ export class BluetoothManager {
         const adapterPaths: string[] = [];
         for (const obj of objectManager.get_objects()) {
             const path = obj.get_object_path();
-            if (obj.get_interface(ADAPTER_INTERFACE)) {
+            if (obj.get_interface(BLUEZ_ADAPTER_1)) {
                 adapterPaths.push(path);
             }
         }
