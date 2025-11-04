@@ -7,10 +7,15 @@ export const OBEX_SERVICE = "org.bluez.obex";
 export const OBEX_CLIENT_INTERFACE = "org.bluez.obex.Client1";
 export const OBEX_TRANSFER_INTERFACE = "org.bluez.obex.Transfer1";
 export const OBEX_OBJECT_PUSH_INTERFACE = "org.bluez.obex.ObjectPush1";
+export const OBEX_AGENT_INTERFACE = "org.bluez.obex.Agent1";
+export const OBEX_AGENT_MANAGER_INTERFACE = "org.bluez.obex.AgentManager1";
 
 export class ObexManager extends GObject.Object {
     private clientProxy: Gio.DBusProxy;
     private activeTransfers: Map<string, Gio.DBusProxy> = new Map(); // transferPath -> transferProxy
+    private agentPath: string = "/com/ezratweaver/AdwBluetooth/obex_agent";
+    private agentNodeInfo: Gio.DBusNodeInfo;
+    private registrationId: number | null = null;
 
     static {
         GObject.registerClass(
@@ -50,6 +55,23 @@ export class ObexManager extends GObject.Object {
             OBEX_CLIENT_INTERFACE,
             null,
         );
+
+        const agentXml = `
+            <node>
+                <interface name="org.bluez.obex.Agent1">
+                    <method name="Release"/>
+                    <method name="AuthorizePush">
+                        <arg name="transfer" type="o" direction="in"/>
+                        <arg name="filename" type="s" direction="out"/>
+                    </method>
+                    <method name="Cancel"/>
+                </interface>
+            </node>
+        `;
+
+        this.agentNodeInfo = Gio.DBusNodeInfo.new_for_xml(agentXml);
+
+        this.registerAgent();
     }
 
     public async createSession(deviceAddress: string): Promise<string | null> {
@@ -231,11 +253,122 @@ export class ObexManager extends GObject.Object {
         }
     }
 
+    public registerAgent(): void {
+        if (this.registrationId) {
+            return; // Already registered
+        }
+
+        const agentInterface =
+            this.agentNodeInfo.lookup_interface(OBEX_AGENT_INTERFACE);
+        if (!agentInterface) {
+            throw new Error("Failed to lookup OBEX Agent interface");
+        }
+
+        this.registrationId = sessionBus.register_object(
+            this.agentPath,
+            agentInterface,
+            this._handleAgentMethodCall.bind(this),
+            null,
+            null,
+        );
+
+        try {
+            sessionBus.call_sync(
+                OBEX_SERVICE,
+                "/org/bluez/obex",
+                OBEX_AGENT_MANAGER_INTERFACE,
+                "RegisterAgent",
+                new GLib.Variant("(o)", [this.agentPath]),
+                null,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null,
+            );
+        } catch (error) {
+            if (this.registrationId) {
+                sessionBus.unregister_object(this.registrationId);
+                this.registrationId = null;
+            }
+            throw new Error(`Failed to register OBEX agent: ${error}`);
+        }
+    }
+
+    public unregisterAgent(): void {
+        if (this.registrationId) {
+            sessionBus.unregister_object(this.registrationId);
+            this.registrationId = null;
+
+            try {
+                sessionBus.call_sync(
+                    OBEX_SERVICE,
+                    "/org/bluez/obex",
+                    OBEX_AGENT_MANAGER_INTERFACE,
+                    "UnregisterAgent",
+                    new GLib.Variant("(o)", [this.agentPath]),
+                    null,
+                    Gio.DBusCallFlags.NONE,
+                    -1,
+                    null,
+                );
+            } catch (error) {
+                log(`Failed to unregister OBEX agent: ${error}`);
+            }
+        }
+    }
+
+    private _handleAgentMethodCall(
+        _: Gio.DBusConnection,
+        _1: string,
+        _2: string,
+        _3: string,
+        methodName: string,
+        parameters: GLib.Variant,
+        invocation: Gio.DBusMethodInvocation,
+    ): void {
+        try {
+            switch (methodName) {
+                case "Release":
+                    // TODO: Implement agent release handling
+                    this.registrationId = null;
+                    invocation.return_value(null);
+                    break;
+
+                case "AuthorizePush": {
+                    // TODO: Implement authorization dialog for incoming file transfers
+                    invocation.return_dbus_error(
+                        "org.bluez.obex.Error.Rejected",
+                        "File transfer authorization not implemented",
+                    );
+                    break;
+                }
+
+                case "Cancel":
+                    // TODO: Implement transfer cancellation handling
+                    invocation.return_value(null);
+                    break;
+
+                default:
+                    invocation.return_dbus_error(
+                        "org.freedesktop.DBus.Error.UnknownMethod",
+                        `Unknown method: ${methodName}`,
+                    );
+                    break;
+            }
+        } catch (error) {
+            invocation.return_dbus_error(
+                "org.bluez.obex.Error.Failed",
+                `OBEX Agent error: ${error}`,
+            );
+        }
+    }
+
     public destroy(): void {
         // Cancel all active transfers
         for (const [transferPath] of this.activeTransfers) {
             this.cancelTransfer(transferPath);
         }
         this.activeTransfers.clear();
+
+        this.unregisterAgent();
     }
 }
