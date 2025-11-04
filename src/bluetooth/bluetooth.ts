@@ -69,3 +69,5 @@ export class BluetoothManager {
         this._adapter = null;
     }
 }
+
+export const bluetoothManager = new BluetoothManager();

@@ -3,13 +3,12 @@ import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
 import Gio from "gi://Gio?version=2.0";
 import { Device } from "./bluetooth/device.js";
-import { Adapter } from "./bluetooth/adapter.js";
+import { bluetoothManager } from "./bluetooth/bluetooth.js";
 import { BluetoothUUID } from "./bluetooth/device-metadata.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress-dialog.js";
 
 export class DeviceDetailsModal extends Adw.Window {
     private device: Device;
-    private adapter: Adapter;
     private _connection_switch!: Gtk.Switch;
     private _connection_spinner!: Adw.Spinner;
     private _paired_row!: Adw.ActionRow;
@@ -43,13 +42,12 @@ export class DeviceDetailsModal extends Adw.Window {
         );
     }
 
-    constructor(device: Device, adapter: Adapter, parent: Gtk.Window) {
+    constructor(device: Device, parent: Gtk.Window) {
         super({
             transientFor: parent,
         });
 
         this.device = device;
-        this.adapter = adapter;
 
         this._paired_row.set_subtitle(device.paired ? "Yes" : "No");
         this._type_row.set_subtitle(device.deviceType);
@@ -94,8 +92,8 @@ export class DeviceDetailsModal extends Adw.Window {
 
         this._connection_switch.connect("state-set", (_, switchTurnedOn) => {
             if (switchTurnedOn && !device.connected) {
-                if (this.adapter.discovering) {
-                    this.adapter.stopDiscovery();
+                if (bluetoothManager.adapter?.discovering) {
+                    bluetoothManager.adapter.stopDiscovery();
                 }
                 device.connectDevice().catch((error) => {
                     log(
@@ -134,7 +132,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
         dialog.connect("response", (_, response) => {
             if (response === "forget") {
-                this.adapter.removeDevice(this.device.devicePath);
+                bluetoothManager.adapter?.removeDevice(this.device.devicePath);
                 this.close();
             }
         });
@@ -170,7 +168,7 @@ export class DeviceDetailsModal extends Adw.Window {
     }
 
     private async sendFiles(files: Gio.File[]): Promise<void> {
-        const obexManager = this.adapter.obexManager;
+        const obexManager = bluetoothManager.adapter?.obexManager;
         if (!obexManager) {
             this.showDialog(
                 "OBEX not available",
