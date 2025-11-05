@@ -16,15 +16,26 @@ export class ObexManager extends GObject.Object {
     private agentPath: string = "/com/ezratweaver/AdwBluetooth/obex_agent";
     private agentNodeInfo: Gio.DBusNodeInfo;
     private registrationId: number | null = null;
+    private pendingAuthorizations: Map<
+        string,
+        {
+            invocation: Gio.DBusMethodInvocation;
+            transferPath: string;
+            filename: string;
+            transferProxy: Gio.DBusProxy;
+        }
+    > = new Map(); // requestId -> { invocation, transferPath, transferProxy }
 
     static {
         GObject.registerClass(
             {
                 Signals: {
                     "transfer-started": {
+                        // transferPath, filename
                         param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING],
                     },
                     "transfer-progress": {
+                        // transferPath, bytesTransferred, totalBytes
                         param_types: [
                             GObject.TYPE_STRING,
                             GObject.TYPE_UINT64,
@@ -32,10 +43,20 @@ export class ObexManager extends GObject.Object {
                         ],
                     },
                     "transfer-completed": {
+                        // transferPath
                         param_types: [GObject.TYPE_STRING],
                     },
                     "transfer-failed": {
+                        // transferPath
                         param_types: [GObject.TYPE_STRING],
+                    },
+                    "receive-file-request": {
+                        // requestId, filename, sizeInBytes
+                        param_types: [
+                            GObject.TYPE_STRING,
+                            GObject.TYPE_STRING,
+                            GObject.TYPE_STRING,
+                        ],
                     },
                 },
             },
@@ -328,22 +349,58 @@ export class ObexManager extends GObject.Object {
         try {
             switch (methodName) {
                 case "Release":
-                    // TODO: Implement agent release handling
                     this.registrationId = null;
                     invocation.return_value(null);
                     break;
 
                 case "AuthorizePush": {
-                    // TODO: Implement authorization dialog for incoming file transfers
-                    invocation.return_dbus_error(
-                        "org.bluez.obex.Error.Rejected",
-                        "File transfer authorization not implemented",
+                    const [transferPath] = parameters.deep_unpack() as [string];
+
+                    const transferProxy = Gio.DBusProxy.new_sync(
+                        sessionBus,
+                        Gio.DBusProxyFlags.NONE,
+                        null,
+                        ORG_BLUEZ_OBEX,
+                        transferPath,
+                        OBEX_TRANSFER_1,
+                        null,
+                    );
+
+                    const sizeVariant =
+                        transferProxy.get_cached_property("Size");
+
+                    const size = sizeVariant?.get_uint64() || 0;
+
+                    const filenameVariant =
+                        transferProxy.get_cached_property("Name");
+
+                    const filename =
+                        filenameVariant?.get_string()[0] ??
+                        `bluetooth-file-${new Date().getTime()}.tmp`;
+
+                    const requestId = `obex-auth-${Date.now()}`;
+                    this.pendingAuthorizations.set(requestId, {
+                        invocation,
+                        filename,
+                        transferPath,
+                        transferProxy,
+                    });
+
+                    // Emit signal for UI to handle authorization
+                    this.emit(
+                        "receive-file-request",
+                        requestId,
+                        filename,
+                        size.toString(),
                     );
                     break;
                 }
 
                 case "Cancel":
-                    // TODO: Implement transfer cancellation handling
+                    // Clear any pending authorizations
+                    for (const [requestId] of this.pendingAuthorizations) {
+                        this.rejectAuthorization(requestId);
+                    }
                     invocation.return_value(null);
                     break;
 
@@ -355,10 +412,60 @@ export class ObexManager extends GObject.Object {
                     break;
             }
         } catch (error) {
+            log(`Error occured handling agent method call: ${error}`);
             invocation.return_dbus_error(
                 "org.bluez.obex.Error.Failed",
                 `OBEX Agent error: ${error}`,
             );
+        }
+    }
+
+    public acceptAuthorization(requestId: string): void {
+        const authData = this.pendingAuthorizations.get(requestId);
+        if (authData) {
+            const downloadsPath =
+                GLib.get_home_dir() + "/Downloads/" + authData.filename;
+
+            authData.invocation.return_value(
+                new GLib.Variant("(s)", [downloadsPath]),
+            );
+            this.pendingAuthorizations.delete(requestId);
+
+            // Start monitoring the accepted transfer
+            this._monitorIncomingTransfer(
+                authData.transferPath,
+                authData.transferProxy,
+            );
+        }
+    }
+
+    private _monitorIncomingTransfer(
+        transferPath: string,
+        transferProxy: Gio.DBusProxy,
+    ): void {
+        try {
+            this.activeTransfers.set(transferPath, transferProxy);
+            this._setupTransferMonitoring(transferPath, transferProxy);
+
+            // Get initial transfer info
+            const filenameVariant =
+                transferProxy.get_cached_property("Filename");
+            const filename = filenameVariant?.get_string()[0] || "unknown_file";
+
+            this.emit("transfer-started", transferPath, filename);
+        } catch (error) {
+            log(`Failed to monitor incoming transfer: ${error}`);
+        }
+    }
+
+    public rejectAuthorization(requestId: string): void {
+        const authData = this.pendingAuthorizations.get(requestId);
+        if (authData) {
+            authData.invocation.return_dbus_error(
+                "org.bluez.obex.Error.Rejected",
+                "File transfer rejected by user",
+            );
+            this.pendingAuthorizations.delete(requestId);
         }
     }
 

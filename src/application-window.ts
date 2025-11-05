@@ -5,6 +5,7 @@ import { bluetoothManager, ErrorPopUp } from "./bluetooth/bluetooth.js";
 import { Device } from "./bluetooth/device.js";
 import { DeviceDetailsModal } from "./device-details-modal.js";
 import { PinConfirmationDialog } from "./pin-confirmation-dialog.js";
+import { FileTransferProgressDialog } from "./file-transfer-progress-dialog.js";
 import Gio from "gi://Gio?version=2.0";
 
 export class Window extends Adw.ApplicationWindow {
@@ -17,7 +18,6 @@ export class Window extends Adw.ApplicationWindow {
     private _discovering_spinner!: Adw.Spinner;
     private _toast_overlay!: Adw.ToastOverlay;
 
-
     private _deviceElements: Map<
         string,
         {
@@ -26,6 +26,9 @@ export class Window extends Adw.ApplicationWindow {
             statusLabel: Gtk.Label;
         }
     > = new Map();
+
+    private _incomingTransferDialogs: Map<string, FileTransferProgressDialog> =
+        new Map();
 
     static {
         GObject.registerClass(
@@ -203,6 +206,47 @@ export class Window extends Adw.ApplicationWindow {
             (_, devicePath: string, passkey: number) =>
                 this._showPasskeyDisplayDialog(devicePath, passkey),
         );
+
+        if (bluetoothManager.adapter.obexManager) {
+            bluetoothManager.adapter.obexManager.connect(
+                "receive-file-request",
+                (_, requestId: string, filename: string, size: string) => {
+                    this._showObexAuthorizationDialog(
+                        requestId,
+                        filename,
+                        size,
+                    );
+                },
+            );
+
+            bluetoothManager.adapter.obexManager.connect(
+                "transfer-started",
+                (_, transferPath: string, filename: string) =>
+                    this._showIncomingTransferProgress(transferPath, filename),
+            );
+
+            bluetoothManager.adapter.obexManager.connect(
+                "transfer-progress",
+                (_, transferPath: string, transferred: number, total: number) =>
+                    this._updateIncomingTransferProgress(
+                        transferPath,
+                        transferred,
+                        total,
+                    ),
+            );
+
+            bluetoothManager.adapter.obexManager.connect(
+                "transfer-completed",
+                (_, transferPath: string) =>
+                    this._onIncomingTransferCompleted(transferPath),
+            );
+
+            bluetoothManager.adapter.obexManager.connect(
+                "transfer-failed",
+                (_, transferPath: string) =>
+                    this._onIncomingTransferFailed(transferPath),
+            );
+        }
     }
 
     private _setupDeviceList(): void {
@@ -324,9 +368,7 @@ export class Window extends Adw.ApplicationWindow {
         );
 
         dialog.connect("confirmed", () => {
-            bluetoothManager.adapter?.bluetoothAgent.confirmPairing(
-                requestId,
-            );
+            bluetoothManager.adapter?.bluetoothAgent.confirmPairing(requestId);
         });
 
         dialog.connect("cancelled", () => {
@@ -390,11 +432,90 @@ export class Window extends Adw.ApplicationWindow {
         dialog.present(this);
     }
 
+    private _showObexAuthorizationDialog(
+        requestId: string,
+        filename: string,
+        size: string,
+    ) {
+        const sizeInMB = (parseInt(size) / 1024 / 1024).toFixed(2);
+
+        const dialog = new Adw.AlertDialog({
+            heading: "Incoming File Transfer",
+            body: `A device wants to send you the file "${filename}" (${sizeInMB} MB).\n\nDo you want to accept this file?`,
+            closeResponse: "reject",
+            defaultResponse: "accept",
+        });
+
+        dialog.add_response("reject", "_Reject");
+        dialog.add_response("accept", "_Accept");
+
+        dialog.connect("response", (_, response: string) => {
+            if (response === "accept") {
+                bluetoothManager.adapter?.obexManager?.acceptAuthorization(
+                    requestId,
+                );
+            } else {
+                bluetoothManager.adapter?.obexManager?.rejectAuthorization(
+                    requestId,
+                );
+            }
+        });
+
+        dialog.present(this);
+    }
+
+    private _showIncomingTransferProgress(
+        transferPath: string,
+        filename: string,
+    ) {
+        const progressDialog = new FileTransferProgressDialog("Unknown Device");
+        progressDialog.updateCurrentFile(filename);
+        progressDialog.updateProgress(0, 1);
+
+        progressDialog.connect("cancelled", () => {
+            bluetoothManager.adapter?.obexManager?.cancelTransfer(transferPath);
+            this._incomingTransferDialogs.delete(transferPath);
+        });
+
+        this._incomingTransferDialogs.set(transferPath, progressDialog);
+        progressDialog.present(this);
+    }
+
+    private _updateIncomingTransferProgress(
+        transferPath: string,
+        transferred: number,
+        total: number,
+    ) {
+        const dialog = this._incomingTransferDialogs.get(transferPath);
+        if (dialog) {
+            dialog.updateProgress(transferred, total);
+        }
+    }
+
+    private _onIncomingTransferCompleted(transferPath: string) {
+        const dialog = this._incomingTransferDialogs.get(transferPath);
+        if (dialog) {
+            dialog.close();
+            this._incomingTransferDialogs.delete(transferPath);
+
+            const toast = new Adw.Toast({
+                title: "File received successfully",
+                timeout: 3,
+            });
+            this._toast_overlay.add_toast(toast);
+        }
+    }
+
+    private _onIncomingTransferFailed(transferPath: string) {
+        const dialog = this._incomingTransferDialogs.get(transferPath);
+        if (dialog) {
+            dialog.showError("File transfer failed");
+            this._incomingTransferDialogs.delete(transferPath);
+        }
+    }
+
     private _showDeviceDetails(device: Device) {
-        const detailsWindow = new DeviceDetailsModal(
-            device,
-            this,
-        );
+        const detailsWindow = new DeviceDetailsModal(device, this);
         detailsWindow.present();
     }
 
