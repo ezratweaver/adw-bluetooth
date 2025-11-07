@@ -424,7 +424,7 @@ export class ObexManager extends GObject.Object {
         const authData = this.pendingAuthorizations.get(requestId);
         if (authData) {
             const downloadsPath =
-                GLib.get_home_dir() + "/Downloads/" + authData.filename;
+                GLib.get_home_dir() + "/.cache/obexd/" + authData.filename;
 
             authData.invocation.return_value(
                 new GLib.Variant("(s)", [downloadsPath]),
@@ -448,8 +448,7 @@ export class ObexManager extends GObject.Object {
             this._setupTransferMonitoring(transferPath, transferProxy);
 
             // Get initial transfer info
-            const filenameVariant =
-                transferProxy.get_cached_property("Filename");
+            const filenameVariant = transferProxy.get_cached_property("Name");
             const filename = filenameVariant?.get_string()[0] || "unknown_file";
 
             this.emit("transfer-started", transferPath, filename);
