@@ -37,8 +37,8 @@ export class Window extends Adw.ApplicationWindow {
         }
     > = new Map();
 
-    private _incomingTransferDialogs: Map<string, FileTransferProgressDialog> =
-        new Map();
+    private _incomingTransfers: Map<string, FileTransferProgressDialog> =
+        new Map(); // transferPath -> FileTransferProgressDialog
 
     static {
         GObject.registerClass(
@@ -225,7 +225,7 @@ export class Window extends Adw.ApplicationWindow {
                     size: string,
                     deviceAddress: string,
                 ) => {
-                    this._showIncomingTransferDialog(
+                    this._showIncomingTransferRequest(
                         requestId,
                         filename,
                         size,
@@ -242,7 +242,7 @@ export class Window extends Adw.ApplicationWindow {
                     filename: string,
                     deviceAddress: string,
                 ) =>
-                    this._showIncomingTransferProgress(
+                    this._showIncomingTransferDialog(
                         transferPath,
                         filename,
                         deviceAddress,
@@ -251,24 +251,45 @@ export class Window extends Adw.ApplicationWindow {
 
             bluetooth.obex.connect(
                 "transfer-progress",
-                (_, transferPath: string, transferred: number, total: number) =>
-                    this._updateIncomingTransferProgress(
-                        transferPath,
-                        transferred,
-                        total,
-                    ),
+                (
+                    _,
+                    transferPath: string,
+                    transferred: number,
+                    total: number,
+                ) => {
+                    const dialog = this._incomingTransfers.get(transferPath);
+                    if (dialog) {
+                        this._updateIncomingTransferProgress(
+                            dialog,
+                            transferred,
+                            total,
+                        );
+                    }
+                },
             );
 
             bluetooth.obex.connect(
                 "transfer-completed",
-                (_, transferPath: string, filename: string) =>
-                    this._onIncomingTransferCompleted(transferPath, filename),
+                (_, transferPath: string, filename: string) => {
+                    const dialog = this._incomingTransfers.get(transferPath);
+                    if (dialog) {
+                        this._onIncomingTransferCompleted(
+                            dialog,
+                            transferPath,
+                            filename,
+                        );
+                    }
+                },
             );
 
             bluetooth.obex.connect(
                 "transfer-failed",
-                (_, transferPath: string) =>
-                    this._onIncomingTransferFailed(transferPath),
+                (_, transferPath: string) => {
+                    const dialog = this._incomingTransfers.get(transferPath);
+                    if (dialog) {
+                        this._onIncomingTransferFailed(dialog, transferPath);
+                    }
+                },
             );
         }
     }
@@ -445,7 +466,7 @@ export class Window extends Adw.ApplicationWindow {
         displayDialogAsTopLevel(dialog);
     }
 
-    private _showIncomingTransferDialog(
+    private _showIncomingTransferRequest(
         requestId: string,
         filename: string,
         size: string,
@@ -478,7 +499,7 @@ export class Window extends Adw.ApplicationWindow {
         displayDialogAsTopLevel(dialog);
     }
 
-    private _showIncomingTransferProgress(
+    private _showIncomingTransferDialog(
         transferPath: string,
         filename: string,
         deviceAddress: string,
@@ -495,51 +516,46 @@ export class Window extends Adw.ApplicationWindow {
 
         progressDialog.connect("cancelled", () => {
             bluetooth.obex?.cancelTransfer(transferPath);
-            this._incomingTransferDialogs.delete(transferPath);
+            this._incomingTransfers.delete(transferPath);
         });
 
-        this._incomingTransferDialogs.set(transferPath, progressDialog);
+        this._incomingTransfers.set(transferPath, progressDialog);
 
         displayDialogAsTopLevel(progressDialog);
     }
 
     private _updateIncomingTransferProgress(
-        transferPath: string,
+        dialog: FileTransferProgressDialog,
         transferred: number,
         total: number,
     ) {
-        const dialog = this._incomingTransferDialogs.get(transferPath);
-        if (dialog) {
-            dialog.updateProgress(transferred, total);
-        }
+        dialog.updateProgress(transferred, total);
     }
 
     private async _onIncomingTransferCompleted(
+        dialog: FileTransferProgressDialog,
         transferPath: string,
         filename: string,
     ) {
-        const dialog = this._incomingTransferDialogs.get(transferPath);
-        if (dialog) {
-            dialog.close();
-            this._incomingTransferDialogs.delete(transferPath);
+        dialog.close();
+        this._incomingTransfers.delete(transferPath);
 
-            // Move file from .cache to Downloads
-            await moveFileToDownloads(filename);
+        // Move file from .cache to Downloads
+        await moveFileToDownloads(filename);
 
-            const toast = new Adw.Toast({
-                title: "File received successfully",
-                timeout: 3,
-            });
-            this._toast_overlay.add_toast(toast);
-        }
+        const toast = new Adw.Toast({
+            title: "File received successfully",
+            timeout: 3,
+        });
+        this._toast_overlay.add_toast(toast);
     }
 
-    private _onIncomingTransferFailed(transferPath: string) {
-        const dialog = this._incomingTransferDialogs.get(transferPath);
-        if (dialog) {
-            dialog.showError("File transfer failed");
-            this._incomingTransferDialogs.delete(transferPath);
-        }
+    private _onIncomingTransferFailed(
+        dialog: FileTransferProgressDialog,
+        transferPath: string,
+    ) {
+        dialog.showError("File transfer failed");
+        this._incomingTransfers.delete(transferPath);
     }
 
     private _showDeviceDetails(device: Device) {
