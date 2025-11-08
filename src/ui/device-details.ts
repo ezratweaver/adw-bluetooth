@@ -145,35 +145,32 @@ export class DeviceDetailsModal extends Adw.Window {
     }
 
     private async sendFiles(files: Gio.File[]): Promise<void> {
+        const progressDialog = new FileTransferProgressDialog(
+            "Preparing...",
+            this.device.alias,
+        );
+        progressDialog.present(this);
+
         const obex = bluetooth.obex;
         if (!obex) {
-            showAlertDialog({
-                parent: this,
-                title: "OBEX not available",
-                description: "File sending is not supported on this system.",
-            });
+            progressDialog.showError(
+                "File sending is not supported on this system.",
+            );
             return;
         }
 
         const sessionPath = await obex.createSession(this.device.address);
 
         if (!sessionPath) {
-            showAlertDialog({
-                parent: this,
-                title: "Connection failed",
-                description: "Could not establish connection to device.",
-            });
+            progressDialog.showError(
+                "Could not establish connection to device.",
+            );
             return;
         }
 
         let currentFileIndex = 0;
         let transferPath: string | null = null;
         let signalIds: number[] = [];
-
-        const progressDialog = new FileTransferProgressDialog(
-            "Preparing...",
-            this.device.alias,
-        );
 
         const cleanupSignals = () => {
             signalIds.forEach((id) => obex.disconnect(id));
@@ -280,8 +277,6 @@ export class DeviceDetailsModal extends Adw.Window {
         });
 
         progressDialog.connect("retry", () => processNextFile());
-
-        progressDialog.present(this);
 
         await processNextFile();
     }
