@@ -30,9 +30,13 @@ export class ObexManager extends GObject.Object {
         GObject.registerClass(
             {
                 Signals: {
-                    "transfer-started": {
+                    "incoming-transfer-started": {
                         // transferPath, filename, deviceAddress
-                        param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_STRING],
+                        param_types: [
+                            GObject.TYPE_STRING,
+                            GObject.TYPE_STRING,
+                            GObject.TYPE_STRING,
+                        ],
                     },
                     "transfer-progress": {
                         // transferPath, bytesTransferred, totalBytes
@@ -179,7 +183,8 @@ export class ObexManager extends GObject.Object {
                 const status = statusValue.get_string()[0];
 
                 if (status === "complete") {
-                    const filename = filenameVariant?.get_string()[0] || "unknown_file";
+                    const filename =
+                        filenameVariant?.get_string()[0] || "unknown_file";
                     this.emit("transfer-completed", transferPath, filename);
                     this.activeTransfers.delete(transferPath);
                 } else if (status === "error") {
@@ -247,10 +252,6 @@ export class ObexManager extends GObject.Object {
 
             this.activeTransfers.set(transferPath, transferProxy);
             this._setupTransferMonitoring(transferPath, transferProxy);
-
-            // Extract filename from path for the signal
-            const filename = filePath.split("/").pop() || filePath;
-            this.emit("transfer-started", transferPath, filename);
 
             return transferPath;
         } catch (error) {
@@ -382,7 +383,8 @@ export class ObexManager extends GObject.Object {
                         `bluetooth-file-${new Date().getTime()}.tmp`;
 
                     // Get device address from session
-                    const deviceAddress = this._getDeviceAddressFromTransfer(transferProxy);
+                    const deviceAddress =
+                        this._getDeviceAddressFromTransfer(transferProxy);
 
                     const requestId = `obex-auth-${Date.now()}`;
                     this.pendingAuthorizations.set(requestId, {
@@ -446,7 +448,9 @@ export class ObexManager extends GObject.Object {
         }
     }
 
-    private _getDeviceAddressFromTransfer(transferProxy: Gio.DBusProxy): string {
+    private _getDeviceAddressFromTransfer(
+        transferProxy: Gio.DBusProxy,
+    ): string {
         try {
             // Get the session object path from the transfer
             const sessionVariant = transferProxy.get_cached_property("Session");
@@ -454,9 +458,9 @@ export class ObexManager extends GObject.Object {
                 log("No session property found on transfer");
                 return "Unknown Device";
             }
-            
+
             const sessionPath = sessionVariant.get_string()[0];
-            
+
             // Create a proxy for the session
             const sessionProxy = Gio.DBusProxy.new_sync(
                 sessionBus,
@@ -467,11 +471,13 @@ export class ObexManager extends GObject.Object {
                 "org.bluez.obex.Session1",
                 null,
             );
-            
+
             // Get device address from session
-            const destinationVariant = sessionProxy.get_cached_property("Destination");
-            const deviceAddress = destinationVariant?.get_string()[0] || "Unknown Device";
-            
+            const destinationVariant =
+                sessionProxy.get_cached_property("Destination");
+            const deviceAddress =
+                destinationVariant?.get_string()[0] || "Unknown Device";
+
             return deviceAddress;
         } catch (error) {
             log(`Failed to get device address from transfer: ${error}`);
@@ -492,9 +498,15 @@ export class ObexManager extends GObject.Object {
             const filename = filenameVariant?.get_string()[0] || "unknown_file";
 
             // Get device address for the transfer
-            const deviceAddress = this._getDeviceAddressFromTransfer(transferProxy);
+            const deviceAddress =
+                this._getDeviceAddressFromTransfer(transferProxy);
 
-            this.emit("transfer-started", transferPath, filename, deviceAddress);
+            this.emit(
+                "incoming-transfer-started",
+                transferPath,
+                filename,
+                deviceAddress,
+            );
         } catch (error) {
             log(`Failed to monitor incoming transfer: ${error}`);
         }

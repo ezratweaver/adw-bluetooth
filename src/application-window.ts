@@ -228,7 +228,7 @@ export class Window extends Adw.ApplicationWindow {
             );
 
             bluetoothManager.adapter.obexManager.connect(
-                "transfer-started",
+                "incoming-transfer-started",
                 (
                     _,
                     transferPath: string,
