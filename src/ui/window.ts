@@ -1,6 +1,7 @@
 import Adw from "gi://Adw";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
+import Gdk from "gi://Gdk?version=4.0";
 import { bluetooth, ErrorPopUp } from "../bluetooth/bluetooth.js";
 import { Device } from "../bluetooth/device.js";
 import { DeviceDetailsModal } from "./device-details.js";
@@ -34,6 +35,7 @@ export class Window extends Adw.ApplicationWindow {
     > = new Map();
 
     private _incomingTransferManager!: IncomingTransferManager;
+    private _vimModeActive: boolean = false;
 
     static {
         GObject.registerClass(
@@ -298,8 +300,8 @@ export class Window extends Adw.ApplicationWindow {
          * 2. Known but not connected devices second
          * 3. Unknown/non paired devices last
          */
-        // Enable selection mode for vim navigation
-        this._devices_list.set_selection_mode(Gtk.SelectionMode.SINGLE);
+        // Start with no selection mode
+        this._devices_list.set_selection_mode(Gtk.SelectionMode.NONE);
         
         this._devices_list.set_sort_func((row1, row2) => {
             const device1 = findDeviceByPath(row1.name);
@@ -483,6 +485,16 @@ export class Window extends Adw.ApplicationWindow {
             statusLabel,
         });
 
+        // Add mouse event handler to disable vim mode
+        const eventController = new Gtk.EventControllerLegacy();
+        eventController.connect("event", (_, event) => {
+            if (event.get_event_type() === Gdk.EventType.BUTTON_PRESS) {
+                this._disableVimMode();
+            }
+            return false;
+        });
+        row.add_controller(eventController);
+
         row.connect("activated", () => {
             if (!device.connecting) {
                 if (device.paired) {
@@ -580,8 +592,25 @@ export class Window extends Adw.ApplicationWindow {
         return super.vfunc_close_request();
     }
 
+    // Vim mode management
+    private _enableVimMode(): void {
+        if (!this._vimModeActive) {
+            this._vimModeActive = true;
+            this._devices_list.set_selection_mode(Gtk.SelectionMode.SINGLE);
+        }
+    }
+
+    private _disableVimMode(): void {
+        if (this._vimModeActive) {
+            this._vimModeActive = false;
+            this._devices_list.set_selection_mode(Gtk.SelectionMode.NONE);
+            this._devices_list.unselect_all();
+        }
+    }
+
     // Vim-style navigation methods
     private _vimNavigateDown(): void {
+        this._enableVimMode();
         const selectedRow = this._devices_list.get_selected_row();
         if (!selectedRow) {
             // If no row is selected, select the first one
@@ -600,6 +629,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _vimNavigateUp(): void {
+        this._enableVimMode();
         const selectedRow = this._devices_list.get_selected_row();
         if (!selectedRow) {
             // If no row is selected, select the first one
@@ -620,6 +650,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _vimSelectCurrent(): void {
+        this._enableVimMode();
         const selectedRow = this._devices_list.get_selected_row();
         if (selectedRow) {
             selectedRow.activate();
@@ -627,6 +658,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _vimNavigateFirst(): void {
+        this._enableVimMode();
         const firstRow = this._devices_list.get_row_at_index(0);
         if (firstRow) {
             this._devices_list.select_row(firstRow);
@@ -634,6 +666,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _vimNavigateLast(): void {
+        this._enableVimMode();
         // Get the last row by iterating through all rows
         let lastRow = null;
         let index = 0;
