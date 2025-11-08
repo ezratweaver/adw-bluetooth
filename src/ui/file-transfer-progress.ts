@@ -5,6 +5,7 @@ import Gtk from "gi://Gtk?version=4.0";
 export class FileTransferProgressDialog extends Adw.Dialog {
     private _cancel_button!: Gtk.Button;
     private _retry_button!: Gtk.Button;
+    private _ok_button!: Gtk.Button;
     private _from_label!: Gtk.Label;
     private _to_label!: Gtk.Label;
     private _progress_bar!: Gtk.ProgressBar;
@@ -19,6 +20,7 @@ export class FileTransferProgressDialog extends Adw.Dialog {
                 InternalChildren: [
                     "cancel_button",
                     "retry_button",
+                    "ok_button",
                     "from_label",
                     "to_label",
                     "progress_bar",
@@ -48,6 +50,10 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         this._retry_button.connect("clicked", () => {
             this.emit("retry");
         });
+
+        this._ok_button.connect("clicked", () => {
+            this.close();
+        });
     }
 
     public updateProgress(transferred: number, total: number): void {
@@ -74,5 +80,19 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         this._error_box.set_visible(false);
         this._retry_button.set_sensitive(false);
         this._retry_button.set_visible(false);
+    }
+
+    public showCompleted(): void {
+        this._cancel_button.set_visible(false);
+        this._retry_button.set_visible(false);
+
+        this._ok_button.set_visible(true);
+        this._ok_button.add_css_class("suggested-action");
+
+        this._error_label.set_text("File transfer completed successfully");
+        this._error_label.remove_css_class("error");
+        this._error_box.set_visible(true);
+
+        this._progress_bar.set_fraction(1.0);
     }
 }

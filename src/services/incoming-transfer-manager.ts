@@ -9,10 +9,8 @@ import { findDeviceByAddress } from "./device.js";
 export class IncomingTransferManager {
     private incomingTransfers: Map<string, FileTransferProgressDialog> =
         new Map();
-    private toastOverlay: Adw.ToastOverlay;
 
-    constructor(toastOverlay: Adw.ToastOverlay) {
-        this.toastOverlay = toastOverlay;
+    constructor() {
         this.setupEventHandlers();
     }
 
@@ -159,17 +157,12 @@ export class IncomingTransferManager {
         transferPath: string,
         filename: string,
     ): Promise<void> {
-        dialog.close();
         this.incomingTransfers.delete(transferPath);
 
         // Move file from .cache to Downloads
         await moveFileToDownloads(filename);
 
-        const toast = new Adw.Toast({
-            title: "File received successfully",
-            timeout: 3,
-        });
-        this.toastOverlay.add_toast(toast);
+        dialog.showCompleted();
     }
 
     private onIncomingTransferFailed(

@@ -85,9 +85,7 @@ export class Window extends Adw.ApplicationWindow {
         this._setupDeviceList();
         this._setupActions();
 
-        this._incomingTransferManager = new IncomingTransferManager(
-            this._toast_overlay,
-        );
+        this._incomingTransferManager = new IncomingTransferManager();
     }
 
     private _showNoAdapterState(): void {

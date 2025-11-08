@@ -191,16 +191,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
             // Check to see if we're done
             if (currentFileIndex >= files.length) {
-                progressDialog.close();
-                const message =
-                    files.length === 1
-                        ? `"${files[0].get_basename()}" was sent to ${this.device.alias}.`
-                        : `${files.length} files were sent to ${this.device.alias}.`;
-                showAlertDialog({
-                    parent: this,
-                    title: "Files sent successfully",
-                    description: message,
-                });
+                progressDialog.showCompleted();
                 cleanupSignals();
                 cleanupSession();
                 return;
