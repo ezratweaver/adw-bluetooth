@@ -397,7 +397,6 @@ export class Window extends Adw.ApplicationWindow {
             return;
         }
 
-        const deviceHasName = !!device.name;
         const { row, spinner, statusLabel } = this._createDeviceRow(device);
 
         this._deviceElements.set(device.devicePath, {
@@ -416,6 +415,11 @@ export class Window extends Adw.ApplicationWindow {
             }
         });
 
+        /**
+         * Sometimes bluez will pick up on a devices, but can't get any metadata,
+         * In that case, we won't show them to the user until we can get the metadata.
+         */
+        const deviceHasName = !!device.name;
         if (deviceHasName) {
             this._devices_list.append(row);
         }
