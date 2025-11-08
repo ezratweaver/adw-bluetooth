@@ -1,5 +1,6 @@
 import Gio from "gi://Gio";
 import { Adapter, BLUEZ_ADAPTER_1 } from "./adapter.js";
+import { ObexManager } from "./obex.js";
 
 export const ORG_BLUEZ = "org.bluez";
 export const DBUS_OBJECT_MANAGER = "org.freedesktop.DBus.ObjectManager";
@@ -15,6 +16,7 @@ export interface ErrorPopUp {
 
 export class BluetoothManager {
     private _adapter: Adapter | null = null;
+    private _obex: ObexManager | null = null;
 
     constructor() {
         this._initialize();
@@ -36,6 +38,12 @@ export class BluetoothManager {
             }
         } catch (error) {
             // Silently fail - adapter will be null
+        }
+        
+        try {
+            this._obex = new ObexManager();
+        } catch (e) {
+            log(`Failed to initialize OBEX manager: ${e}`);
         }
     }
 
@@ -64,9 +72,17 @@ export class BluetoothManager {
         return this._adapter;
     }
 
+    get obex(): ObexManager | null {
+        return this._obex;
+    }
+
     public destroy(): void {
         this._adapter = null;
+        if (this._obex) {
+            this._obex.destroy();
+            this._obex = null;
+        }
     }
 }
 
-export const bluetoothManager = new BluetoothManager();
+export const bluetooth = new BluetoothManager();

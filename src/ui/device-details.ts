@@ -3,7 +3,7 @@ import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
 import Gio from "gi://Gio?version=2.0";
 import { Device } from "../bluetooth/device.js";
-import { bluetoothManager } from "../bluetooth/bluetooth.js";
+import { bluetooth } from "../bluetooth/bluetooth.js";
 import { BluetoothUUID } from "../bluetooth/device-metadata.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress.js";
 
@@ -92,8 +92,8 @@ export class DeviceDetailsModal extends Adw.Window {
 
         this._connection_switch.connect("state-set", (_, switchTurnedOn) => {
             if (switchTurnedOn && !device.connected) {
-                if (bluetoothManager.adapter?.discovering) {
-                    bluetoothManager.adapter.stopDiscovery();
+                if (bluetooth.adapter?.discovering) {
+                    bluetooth.adapter.stopDiscovery();
                 }
                 device.connectDevice().catch((error) => {
                     log(
@@ -132,7 +132,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
         dialog.connect("response", (_, response) => {
             if (response === "forget") {
-                bluetoothManager.adapter?.removeDevice(this.device.devicePath);
+                bluetooth.adapter?.removeDevice(this.device.devicePath);
                 this.close();
             }
         });
@@ -168,8 +168,8 @@ export class DeviceDetailsModal extends Adw.Window {
     }
 
     private async sendFiles(files: Gio.File[]): Promise<void> {
-        const obexManager = bluetoothManager.adapter?.obexManager;
-        if (!obexManager) {
+        const obex = bluetooth.obex;
+        if (!obex) {
             this.showDialog(
                 "OBEX not available",
                 "File sending is not supported on this system.",
@@ -177,9 +177,7 @@ export class DeviceDetailsModal extends Adw.Window {
             return;
         }
 
-        const sessionPath = await obexManager.createSession(
-            this.device.address,
-        );
+        const sessionPath = await obex.createSession(this.device.address);
 
         if (!sessionPath) {
             this.showDialog(
@@ -199,13 +197,13 @@ export class DeviceDetailsModal extends Adw.Window {
         );
 
         const cleanupSignals = () => {
-            signalIds.forEach((id) => obexManager.disconnect(id));
+            signalIds.forEach((id) => obex.disconnect(id));
             signalIds = [];
         };
 
         const cleanupSession = async () => {
             try {
-                await obexManager.removeSession(sessionPath);
+                await obex.removeSession(sessionPath);
             } catch (error) {
                 log(`Failed to cleanup session: ${error}`);
             }
@@ -243,7 +241,7 @@ export class DeviceDetailsModal extends Adw.Window {
             progressDialog.updateProgress(0, 1);
 
             signalIds.push(
-                obexManager.connect(
+                obex.connect(
                     "transfer-progress",
                     (_, path: string, transferred: number, total: number) => {
                         if (path === transferPath) {
@@ -252,14 +250,14 @@ export class DeviceDetailsModal extends Adw.Window {
                     },
                 ),
 
-                obexManager.connect("transfer-completed", (_, path: string) => {
+                obex.connect("transfer-completed", (_, path: string) => {
                     if (path === transferPath) {
                         currentFileIndex++;
                         processNextFile();
                     }
                 }),
 
-                obexManager.connect("transfer-failed", (_, path: string) => {
+                obex.connect("transfer-failed", (_, path: string) => {
                     if (path === transferPath) {
                         const message =
                             "Make sure that the remote device is switched on and that it accepts Bluetooth connections";
@@ -269,7 +267,7 @@ export class DeviceDetailsModal extends Adw.Window {
             );
 
             try {
-                transferPath = await obexManager.sendFileWithSession(
+                transferPath = await obex.sendFileWithSession(
                     sessionPath,
                     currentFilePath,
                 );
@@ -292,7 +290,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
         progressDialog.connect("cancelled", () => {
             if (transferPath) {
-                obexManager.cancelTransfer(transferPath);
+                obex.cancelTransfer(transferPath);
             }
             cleanupSignals();
             cleanupSession();

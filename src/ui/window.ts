@@ -1,7 +1,7 @@
 import Adw from "gi://Adw";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
-import { bluetoothManager, ErrorPopUp } from "../bluetooth/bluetooth.js";
+import { bluetooth, ErrorPopUp } from "../bluetooth/bluetooth.js";
 import { Device } from "../bluetooth/device.js";
 import { DeviceDetailsModal } from "./device-details.js";
 import { PinConfirmationDialog } from "./pin-confirmation.js";
@@ -62,13 +62,13 @@ export class Window extends Adw.ApplicationWindow {
     constructor(params?: Partial<Adw.ApplicationWindow.ConstructorProps>) {
         super(params);
 
-        if (!bluetoothManager.adapter) {
+        if (!bluetooth.adapter) {
             this._showNoAdapterState();
             return;
         }
 
         try {
-            bluetoothManager.adapter.bluetoothAgent.register();
+            bluetooth.adapter.bluetoothAgent.register();
         } catch (e) {
             this._showError({
                 title: "Failed to register bluetooth agent",
@@ -98,12 +98,12 @@ export class Window extends Adw.ApplicationWindow {
         });
 
         toggleDiscoveryAction.connect("activate", () => {
-            if (!bluetoothManager.adapter) return;
+            if (!bluetooth.adapter) return;
 
-            if (bluetoothManager.adapter.discovering) {
-                bluetoothManager.adapter.stopDiscovery();
+            if (bluetooth.adapter.discovering) {
+                bluetooth.adapter.stopDiscovery();
             } else {
-                bluetoothManager.adapter.startDiscovery();
+                bluetooth.adapter.startDiscovery();
             }
         });
 
@@ -120,16 +120,16 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupPropertyBindings(): void {
-        if (!bluetoothManager.adapter) return;
+        if (!bluetooth.adapter) return;
 
-        bluetoothManager.adapter.bind_property(
+        bluetooth.adapter.bind_property(
             "powered",
             this._bluetooth_toggle,
             "active",
             GObject.BindingFlags.SYNC_CREATE,
         );
 
-        bluetoothManager.adapter.bind_property(
+        bluetooth.adapter.bind_property(
             "powered",
             this._disabled_state,
             "visible",
@@ -137,14 +137,14 @@ export class Window extends Adw.ApplicationWindow {
                 GObject.BindingFlags.INVERT_BOOLEAN,
         );
 
-        bluetoothManager.adapter.bind_property(
+        bluetooth.adapter.bind_property(
             "powered",
             this._enabled_state,
             "visible",
             GObject.BindingFlags.SYNC_CREATE,
         );
 
-        bluetoothManager.adapter.bind_property(
+        bluetooth.adapter.bind_property(
             "discovering",
             this._discovering_spinner,
             "visible",
@@ -153,16 +153,16 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupEventHandlers(): void {
-        if (!bluetoothManager.adapter) return;
+        if (!bluetooth.adapter) return;
 
         // On enabling / disabling bluetooth
         this._bluetooth_toggle.connect("state-set", (_, state) => {
-            if (!bluetoothManager.adapter) {
+            if (!bluetooth.adapter) {
                 return true; // Prevent switch toggle if no adapter
             }
 
             try {
-                bluetoothManager.adapter.setAdapterPower(state);
+                bluetooth.adapter.setAdapterPower(state);
                 return false; // Allow switch to toggle
             } catch (error) {
                 this._showError({
@@ -174,42 +174,40 @@ export class Window extends Adw.ApplicationWindow {
         });
 
         // Adapter listeners
-        bluetoothManager.adapter.connect(
-            "device-added",
-            (_, devicePath: string) => this._addDevice(devicePath),
+        bluetooth.adapter.connect("device-added", (_, devicePath: string) =>
+            this._addDevice(devicePath),
         );
-        bluetoothManager.adapter.connect(
-            "device-removed",
-            (_, devicePath: string) => this._removeDevice(devicePath),
+        bluetooth.adapter.connect("device-removed", (_, devicePath: string) =>
+            this._removeDevice(devicePath),
         );
 
         // Agent event listeners
-        bluetoothManager.adapter.bluetoothAgent.connect(
+        bluetooth.adapter.bluetoothAgent.connect(
             "confirmation-request",
             (_, devicePath: string, requestId: string, passkey: number) =>
                 this._showConfirmationDialog(devicePath, requestId, passkey),
         );
 
-        bluetoothManager.adapter.bluetoothAgent.connect(
+        bluetooth.adapter.bluetoothAgent.connect(
             "authorization-request",
             (_, devicePath: string, requestId: string) =>
                 this._showAuthorizationDialog(devicePath, requestId),
         );
 
-        bluetoothManager.adapter.bluetoothAgent.connect(
+        bluetooth.adapter.bluetoothAgent.connect(
             "pin-display",
             (_, devicePath: string, pincode: string) =>
                 this._showPinDisplayDialog(devicePath, pincode),
         );
 
-        bluetoothManager.adapter.bluetoothAgent.connect(
+        bluetooth.adapter.bluetoothAgent.connect(
             "passkey-display",
             (_, devicePath: string, passkey: number) =>
                 this._showPasskeyDisplayDialog(devicePath, passkey),
         );
 
-        if (bluetoothManager.adapter.obexManager) {
-            bluetoothManager.adapter.obexManager.connect(
+        if (bluetooth.obex) {
+            bluetooth.obex.connect(
                 "receive-file-request",
                 (
                     _,
@@ -227,7 +225,7 @@ export class Window extends Adw.ApplicationWindow {
                 },
             );
 
-            bluetoothManager.adapter.obexManager.connect(
+            bluetooth.obex.connect(
                 "incoming-transfer-started",
                 (
                     _,
@@ -242,7 +240,7 @@ export class Window extends Adw.ApplicationWindow {
                     ),
             );
 
-            bluetoothManager.adapter.obexManager.connect(
+            bluetooth.obex.connect(
                 "transfer-progress",
                 (_, transferPath: string, transferred: number, total: number) =>
                     this._updateIncomingTransferProgress(
@@ -252,13 +250,13 @@ export class Window extends Adw.ApplicationWindow {
                     ),
             );
 
-            bluetoothManager.adapter.obexManager.connect(
+            bluetooth.obex.connect(
                 "transfer-completed",
                 (_, transferPath: string, filename: string) =>
                     this._onIncomingTransferCompleted(transferPath, filename),
             );
 
-            bluetoothManager.adapter.obexManager.connect(
+            bluetooth.obex.connect(
                 "transfer-failed",
                 (_, transferPath: string) =>
                     this._onIncomingTransferFailed(transferPath),
@@ -267,7 +265,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupDeviceList(): void {
-        if (!bluetoothManager.adapter) return;
+        if (!bluetooth.adapter) return;
 
         /*
          * Sorts devices by priority as:
@@ -294,19 +292,19 @@ export class Window extends Adw.ApplicationWindow {
             return 0;
         });
 
-        bluetoothManager.adapter.devices.forEach(({ devicePath }) =>
+        bluetooth.adapter.devices.forEach(({ devicePath }) =>
             this._addDevice(devicePath),
         );
     }
 
     private _findDeviceByPath(devicePath: string): Device | undefined {
-        return bluetoothManager.adapter?.devices.find(
+        return bluetooth.adapter?.devices.find(
             (d) => d.devicePath === devicePath,
         );
     }
 
     private _findDeviceByAddress(deviceAddress: string): Device | undefined {
-        return bluetoothManager.adapter?.devices.find(
+        return bluetooth.adapter?.devices.find(
             (d) => d.address === deviceAddress,
         );
     }
@@ -404,13 +402,11 @@ export class Window extends Adw.ApplicationWindow {
         );
 
         dialog.connect("confirmed", () => {
-            bluetoothManager.adapter?.bluetoothAgent.confirmPairing(requestId);
+            bluetooth.adapter?.bluetoothAgent.confirmPairing(requestId);
         });
 
         dialog.connect("cancelled", () => {
-            bluetoothManager.adapter?.bluetoothAgent.cancelConfirmation(
-                requestId,
-            );
+            bluetooth.adapter?.bluetoothAgent.cancelConfirmation(requestId);
         });
 
         this._displayDialogAsTopLevel(dialog);
@@ -431,11 +427,11 @@ export class Window extends Adw.ApplicationWindow {
 
         dialog.connect("response", (_, response: string) => {
             if (response === "allow") {
-                bluetoothManager.adapter?.bluetoothAgent.confirmAuthorization(
+                bluetooth.adapter?.bluetoothAgent.confirmAuthorization(
                     requestId,
                 );
             } else {
-                bluetoothManager.adapter?.bluetoothAgent.cancelAuthorization(
+                bluetooth.adapter?.bluetoothAgent.cancelAuthorization(
                     requestId,
                 );
             }
@@ -494,13 +490,9 @@ export class Window extends Adw.ApplicationWindow {
 
         dialog.connect("response", (_, response: string) => {
             if (response === "accept") {
-                bluetoothManager.adapter?.obexManager?.acceptAuthorization(
-                    requestId,
-                );
+                bluetooth.obex?.acceptAuthorization(requestId);
             } else {
-                bluetoothManager.adapter?.obexManager?.rejectAuthorization(
-                    requestId,
-                );
+                bluetooth.obex?.rejectAuthorization(requestId);
             }
         });
 
@@ -523,7 +515,7 @@ export class Window extends Adw.ApplicationWindow {
         progressDialog.updateProgress(0, 1);
 
         progressDialog.connect("cancelled", () => {
-            bluetoothManager.adapter?.obexManager?.cancelTransfer(transferPath);
+            bluetooth.obex?.cancelTransfer(transferPath);
             this._incomingTransferDialogs.delete(transferPath);
         });
 
@@ -665,7 +657,7 @@ export class Window extends Adw.ApplicationWindow {
         try {
             if (!device.paired) {
                 // Stop discovery while pairing/connecting
-                bluetoothManager.adapter?.stopDiscovery();
+                bluetooth.adapter?.stopDiscovery();
                 // Pair first if not paired
                 await device.pairDevice();
                 // After successful pairing, connect automatically
@@ -679,7 +671,7 @@ export class Window extends Adw.ApplicationWindow {
             }
         } catch (error) {
             if (!device.paired || device.connected) {
-                bluetoothManager.adapter?.startDiscovery();
+                bluetooth.adapter?.startDiscovery();
             }
 
             const action = !device.paired
@@ -713,7 +705,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     vfunc_close_request(): boolean {
-        bluetoothManager.destroy();
+        bluetooth.destroy();
         return super.vfunc_close_request();
     }
 }

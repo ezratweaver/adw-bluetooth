@@ -9,7 +9,6 @@ import {
     systemBus,
 } from "./bluetooth.js";
 import { BluetoothAgent } from "./agent.js";
-import { ObexManager } from "./obex.js";
 
 export const BLUEZ_ADAPTER_1 = "org.bluez.Adapter1";
 
@@ -18,7 +17,6 @@ export class Adapter extends GObject.Object {
     private devicePaths: string[] = [];
     private adapterProxy: Gio.DBusProxy;
     private agent: BluetoothAgent;
-    private obex: ObexManager | null = null;
 
     private discoveryTimeoutId: number | null = null;
 
@@ -73,12 +71,6 @@ export class Adapter extends GObject.Object {
         );
 
         this.agent = new BluetoothAgent();
-
-        try {
-            this.obex = new ObexManager();
-        } catch (e) {
-            log(`Failed to initialize OBEX manager: ${e}`);
-        }
 
         this._loadProperties();
         this._setupPropertyChangeListener();
@@ -318,9 +310,6 @@ export class Adapter extends GObject.Object {
         return this.agent;
     }
 
-    get obexManager(): ObexManager | null {
-        return this.obex;
-    }
 
     func_dispose() {
         if (this.discovering) {
