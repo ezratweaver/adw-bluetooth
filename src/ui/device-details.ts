@@ -26,7 +26,7 @@ export class DeviceDetailsModal extends Adw.Window {
         GObject.registerClass(
             {
                 Template:
-                    "resource:///com/ezratweaver/AdwBluetooth/ui/device-details.ui",
+                    "resource:///com/ezratweaver/AdwBluetooth/blueprints/device-details.ui",
                 InternalChildren: [
                     "connection_switch",
                     "connection_spinner",

@@ -39,7 +39,7 @@ export class Window extends Adw.ApplicationWindow {
         GObject.registerClass(
             {
                 Template:
-                    "resource:///com/ezratweaver/AdwBluetooth/ui/application-window.ui",
+                    "resource:///com/ezratweaver/AdwBluetooth/blueprints/application-window.ui",
                 InternalChildren: [
                     "toast-overlay",
                     "menu-button",

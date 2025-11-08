@@ -17,9 +17,9 @@ if compile_schemas.found()
 endif
 
 
-# Grab all ui/*.blp files
+# Grab all blueprints/*.blp files
 # Crazy idea! If the code is in the repo, it probably needs to get compiled!
-c = run_command('bash', '-c', 'ls ui/*.blp', check: true)
+c = run_command('bash', '-c', 'ls blueprints/*.blp', check: true)
 sources = c.stdout().strip().split('\n')
 
 blueprints = custom_target('blueprints',

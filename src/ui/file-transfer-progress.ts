@@ -17,7 +17,7 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         GObject.registerClass(
             {
                 Template:
-                    "resource:///com/ezratweaver/AdwBluetooth/ui/file-transfer-progress.ui",
+                    "resource:///com/ezratweaver/AdwBluetooth/blueprints/file-transfer-progress.ui",
                 InternalChildren: [
                     "cancel_button",
                     "retry_button",

@@ -12,7 +12,7 @@ export class PinConfirmationDialog extends Adw.Dialog {
         GObject.registerClass(
             {
                 Template:
-                    "resource:///com/ezratweaver/AdwBluetooth/ui/pin-confirmation.ui",
+                    "resource:///com/ezratweaver/AdwBluetooth/blueprints/pin-confirmation.ui",
                 InternalChildren: [
                     "cancel_button",
                     "confirm_button",
