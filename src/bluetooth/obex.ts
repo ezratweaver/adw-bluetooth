@@ -43,8 +43,8 @@ export class ObexManager extends GObject.Object {
                         ],
                     },
                     "transfer-completed": {
-                        // transferPath
-                        param_types: [GObject.TYPE_STRING],
+                        // transferPath, filename
+                        param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING],
                     },
                     "transfer-failed": {
                         // transferPath
@@ -173,12 +173,14 @@ export class ObexManager extends GObject.Object {
             const statusValue = changed.lookup_value("Status", null);
             const transferredValue = changed.lookup_value("Transferred", null);
             const sizeValue = transferProxy.get_cached_property("Size");
+            const filenameVariant = transferProxy.get_cached_property("Name");
 
             if (statusValue) {
                 const status = statusValue.get_string()[0];
 
                 if (status === "complete") {
-                    this.emit("transfer-completed", transferPath);
+                    const filename = filenameVariant?.get_string()[0] || "unknown_file";
+                    this.emit("transfer-completed", transferPath, filename);
                     this.activeTransfers.delete(transferPath);
                 } else if (status === "error") {
                     this.emit("transfer-failed", transferPath);

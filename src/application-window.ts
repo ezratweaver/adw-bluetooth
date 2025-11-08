@@ -7,6 +7,7 @@ import { DeviceDetailsModal } from "./device-details-modal.js";
 import { PinConfirmationDialog } from "./pin-confirmation-dialog.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress-dialog.js";
 import Gio from "gi://Gio?version=2.0";
+import GLib from "gi://GLib?version=2.0";
 
 export class Window extends Adw.ApplicationWindow {
     private _bluetooth_toggle!: Gtk.Switch;
@@ -253,8 +254,8 @@ export class Window extends Adw.ApplicationWindow {
 
             bluetoothManager.adapter.obexManager.connect(
                 "transfer-completed",
-                (_, transferPath: string) =>
-                    this._onIncomingTransferCompleted(transferPath),
+                (_, transferPath: string, filename: string) =>
+                    this._onIncomingTransferCompleted(transferPath, filename),
             );
 
             bluetoothManager.adapter.obexManager.connect(
@@ -502,7 +503,7 @@ export class Window extends Adw.ApplicationWindow {
 
         const progressDialog = new FileTransferProgressDialog(
             deviceName,
-            filename,
+            "~/Downloads/" + filename,
         );
         progressDialog.updateProgress(0, 1);
 
@@ -526,17 +527,46 @@ export class Window extends Adw.ApplicationWindow {
         }
     }
 
-    private _onIncomingTransferCompleted(transferPath: string) {
+    private _onIncomingTransferCompleted(
+        transferPath: string,
+        filename: string,
+    ) {
         const dialog = this._incomingTransferDialogs.get(transferPath);
         if (dialog) {
             dialog.close();
             this._incomingTransferDialogs.delete(transferPath);
+
+            // Move file from .cache to Downloads
+            this._moveFileToDownloads(filename);
 
             const toast = new Adw.Toast({
                 title: "File received successfully",
                 timeout: 3,
             });
             this._toast_overlay.add_toast(toast);
+        }
+    }
+
+    private _moveFileToDownloads(filename: string): void {
+        try {
+            const sourceePath =
+                GLib.get_home_dir() + "/.cache/obexd/" + filename;
+            const destPath = GLib.get_home_dir() + "/Downloads/" + filename;
+
+            const sourceFile = Gio.File.new_for_path(sourceePath);
+            const destFile = Gio.File.new_for_path(destPath);
+
+            // Check if source file exists
+            if (!sourceFile.query_exists(null)) {
+                log(`Source file not found: ${sourceePath}`);
+                return;
+            }
+
+            // Move the file
+            sourceFile.move(destFile, Gio.FileCopyFlags.OVERWRITE, null, null);
+            log(`File moved from ${sourceePath} to ${destPath}`);
+        } catch (error) {
+            log(`Failed to move file to Downloads: ${error}`);
         }
     }
 
