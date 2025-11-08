@@ -11,11 +11,11 @@
     <file>services/dialog.js</file>
     <file>services/filesystem.js</file>
     <file>services/device.js</file>
+    <file>services/device-metadata.js</file>
     <file>services/incoming-transfer-manager.js</file>
     <file>bluetooth/bluetooth.js</file>
     <file>bluetooth/adapter.js</file>
     <file>bluetooth/device.js</file>
-    <file>bluetooth/device-metadata.js</file>
     <file>bluetooth/agent.js</file>
     <file>bluetooth/obex.js</file>
   </gresource>

@@ -4,7 +4,7 @@ import Gtk from "gi://Gtk?version=4.0";
 import Gio from "gi://Gio?version=2.0";
 import { Device } from "../bluetooth/device.js";
 import { bluetooth } from "../bluetooth/bluetooth.js";
-import { BluetoothUUID } from "../bluetooth/device-metadata.js";
+import { BluetoothUUID } from "../services/device-metadata.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress.js";
 import { showDestructiveConfirmationDialog } from "../services/dialog.js";
 import { showFilePicker } from "../services/filesystem.js";

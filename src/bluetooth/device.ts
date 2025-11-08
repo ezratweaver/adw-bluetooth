@@ -6,7 +6,7 @@ import {
     incrementDeviceConnectionCount,
     getDeviceConnectionCount,
 } from "../services/gsettings.js";
-import { getDeviceTypeFromClass } from "./device-metadata.js";
+import { getDeviceTypeFromClass } from "../services/device-metadata.js";
 
 export const BLUEZ_DEVICE_1 = "org.bluez.Device1";
 
