@@ -361,7 +361,11 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _showError = (error: ErrorPopUp) => {
-        showAlertDialog(this, error.title, error.description);
+        showAlertDialog({
+            parent: this,
+            title: error.title,
+            description: error.description,
+        });
     };
 
     private _showConfirmationDialog(

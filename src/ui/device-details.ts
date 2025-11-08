@@ -6,7 +6,10 @@ import { Device } from "../bluetooth/device.js";
 import { bluetooth } from "../bluetooth/bluetooth.js";
 import { BluetoothUUID } from "../bluetooth/device-metadata.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress.js";
-import { showAlertDialog, showConfirmationDialog } from "../services/dialog.js";
+import {
+    showAlertDialog,
+    showDestructiveConfirmationDialog,
+} from "../services/dialog.js";
 import { showFilePicker } from "../services/filesystem.js";
 
 export class DeviceDetailsModal extends Adw.Window {
@@ -120,13 +123,13 @@ export class DeviceDetailsModal extends Adw.Window {
     }
 
     private async confirmForgetDevice(): Promise<void> {
-        const confirmed = await showConfirmationDialog(
-            this,
-            "Forget Device?",
-            `"${this.device.alias}" will be removed from your saved devices. You will have to set it up again to use it.`,
-            "Forget",
-            "Cancel"
-        );
+        const confirmed = await showDestructiveConfirmationDialog({
+            parent: this,
+            title: "Forget Device?",
+            description: `"${this.device.alias}" will be removed from your saved devices. You will have to set it up again to use it.`,
+            confirmText: "Forget",
+            cancelText: "Cancel",
+        });
 
         if (confirmed) {
             bluetooth.adapter?.removeDevice(this.device.devicePath);
@@ -144,14 +147,22 @@ export class DeviceDetailsModal extends Adw.Window {
     private async sendFiles(files: Gio.File[]): Promise<void> {
         const obex = bluetooth.obex;
         if (!obex) {
-            showAlertDialog(this, "OBEX not available", "File sending is not supported on this system.");
+            showAlertDialog({
+                parent: this,
+                title: "OBEX not available",
+                description: "File sending is not supported on this system.",
+            });
             return;
         }
 
         const sessionPath = await obex.createSession(this.device.address);
 
         if (!sessionPath) {
-            showAlertDialog(this, "Connection failed", "Could not establish connection to device.");
+            showAlertDialog({
+                parent: this,
+                title: "Connection failed",
+                description: "Could not establish connection to device.",
+            });
             return;
         }
 
@@ -188,7 +199,11 @@ export class DeviceDetailsModal extends Adw.Window {
                     files.length === 1
                         ? `"${files[0].get_basename()}" was sent to ${this.device.alias}.`
                         : `${files.length} files were sent to ${this.device.alias}.`;
-                showAlertDialog(this,"Files sent successfully", message);
+                showAlertDialog({
+                    parent: this,
+                    title: "Files sent successfully",
+                    description: message,
+                });
                 cleanupSignals();
                 cleanupSession();
                 return;
@@ -270,5 +285,4 @@ export class DeviceDetailsModal extends Adw.Window {
 
         await processNextFile();
     }
-
 }
