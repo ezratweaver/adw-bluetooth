@@ -23,6 +23,7 @@ export class Adapter extends GObject.Object {
     private _powered: boolean = false;
     private _discovering: boolean = false;
     private _devices: Device[] = [];
+    private _limboDevices: Device[] = [];
 
     static {
         GObject.registerClass(
@@ -146,9 +147,26 @@ export class Adapter extends GObject.Object {
                         this.devicePaths.push(path);
                     }
 
-                    this.devices.push(newDevice);
+                    /**
+                     * Sometimes bluez will pick up on a devices, but can't get any metadata.
+                     * So we'll use name as the gut check for if metadata was found, and only emit
+                     * devices which have metadata to the UI
+                     */
+                    if (newDevice.name) {
+                        this._devices.push(newDevice);
+                        this.emit("device-added", newDevice.devicePath);
+                    } else {
+                        // Add device to a seperate array to keep the object from getting garbage collected
+                        this._limboDevices.push(newDevice);
 
-                    this.emit("device-added", newDevice.devicePath);
+                        // Once the device gets a name, it can join the rest of its friends
+                        newDevice.connect("device-changed", () => {
+                            if (newDevice.name) {
+                                this._devices.push(newDevice);
+                                this.emit("device-added", newDevice.devicePath);
+                            }
+                        });
+                    }
                 }
             },
         );
@@ -309,7 +327,6 @@ export class Adapter extends GObject.Object {
     get bluetoothAgent(): BluetoothAgent {
         return this.agent;
     }
-
 
     func_dispose() {
         if (this.discovering) {

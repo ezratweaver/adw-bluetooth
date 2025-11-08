@@ -415,23 +415,12 @@ export class Window extends Adw.ApplicationWindow {
             }
         });
 
-        /**
-         * Sometimes bluez will pick up on a devices, but can't get any metadata,
-         * In that case, we won't show them to the user until we can get the metadata.
-         */
-        const deviceHasName = !!device.name;
-        if (deviceHasName) {
-            this._devices_list.append(row);
-        }
+        this._devices_list.append(row);
 
         device.connect("device-changed", (device: Device) => {
             row.set_title(device.alias);
 
             statusLabel.set_label(device.connectedStatus);
-
-            if (!deviceHasName && !!device.name) {
-                this._devices_list.append(row);
-            }
 
             // Trigger resort when connection status changes
             this._devices_list.invalidate_sort();
