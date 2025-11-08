@@ -146,7 +146,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
     private async sendFiles(files: Gio.File[]): Promise<void> {
         const progressDialog = new FileTransferProgressDialog(
-            "Preparing...",
+            files[0].get_path() ?? "Pending...",
             this.device.alias,
         );
         progressDialog.present(this);
