@@ -2,10 +2,10 @@ import Adw from "gi://Adw";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
 import Gio from "gi://Gio?version=2.0";
-import { Device } from "./bluetooth/device.js";
-import { bluetoothManager } from "./bluetooth/bluetooth.js";
-import { BluetoothUUID } from "./bluetooth/device-metadata.js";
-import { FileTransferProgressDialog } from "./file-transfer-progress-dialog.js";
+import { Device } from "../bluetooth/device.js";
+import { bluetoothManager } from "../bluetooth/bluetooth.js";
+import { BluetoothUUID } from "../bluetooth/device-metadata.js";
+import { FileTransferProgressDialog } from "./file-transfer-progress.js";
 
 export class DeviceDetailsModal extends Adw.Window {
     private device: Device;

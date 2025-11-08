@@ -2,11 +2,11 @@
 <gresources>
   <gresource prefix="/com/ezratweaver/AdwBluetooth/js">
     <file>main.js</file>
-    <file>application-window.js</file>
-    <file>device-details-modal.js</file>
-    <file>pin-confirmation-dialog.js</file>
-    <file>file-transfer-progress-dialog.js</file>
-    <file>gsettings.js</file>
+    <file>ui/window.js</file>
+    <file>ui/device-details.js</file>
+    <file>ui/pin-confirmation.js</file>
+    <file>ui/file-transfer-progress.js</file>
+    <file>services/gsettings.js</file>
     <file>bluetooth/bluetooth.js</file>
     <file>bluetooth/adapter.js</file>
     <file>bluetooth/device.js</file>

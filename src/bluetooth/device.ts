@@ -5,7 +5,7 @@ import { ORG_BLUEZ, DBUS_PROPERTIES_SET, systemBus } from "./bluetooth.js";
 import {
     incrementDeviceConnectionCount,
     getDeviceConnectionCount,
-} from "../gsettings.js";
+} from "../services/gsettings.js";
 import { getDeviceTypeFromClass } from "./device-metadata.js";
 
 export const BLUEZ_DEVICE_1 = "org.bluez.Device1";

@@ -1,11 +1,11 @@
 import Adw from "gi://Adw";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
-import { bluetoothManager, ErrorPopUp } from "./bluetooth/bluetooth.js";
-import { Device } from "./bluetooth/device.js";
-import { DeviceDetailsModal } from "./device-details-modal.js";
-import { PinConfirmationDialog } from "./pin-confirmation-dialog.js";
-import { FileTransferProgressDialog } from "./file-transfer-progress-dialog.js";
+import { bluetoothManager, ErrorPopUp } from "../bluetooth/bluetooth.js";
+import { Device } from "../bluetooth/device.js";
+import { DeviceDetailsModal } from "./device-details.js";
+import { PinConfirmationDialog } from "./pin-confirmation.js";
+import { FileTransferProgressDialog } from "./file-transfer-progress.js";
 import Gio from "gi://Gio?version=2.0";
 import GLib from "gi://GLib?version=2.0";
 

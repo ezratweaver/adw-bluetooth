@@ -3,7 +3,7 @@ import Gio from "gi://Gio";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
 
-import { Window } from "./application-window.js";
+import { Window } from "./ui/window.js";
 import Gdk from "gi://Gdk?version=4.0";
 
 export class Application extends Adw.Application {
