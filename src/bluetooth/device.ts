@@ -9,6 +9,7 @@ import {
 import { getDeviceTypeFromClass } from "../services/device-metadata.js";
 
 export const BLUEZ_DEVICE_1 = "org.bluez.Device1";
+export const BLUEZ_BATTERY_1 = "org.bluez.Battery1";
 
 interface DeviceProps {
     devicePath: string;
@@ -18,6 +19,7 @@ interface DeviceProps {
 
 export class Device extends GObject.Object {
     private deviceProxy: Gio.DBusProxy;
+    private batteryProxy: Gio.DBusProxy | null = null;
     private blockAgent: () => void;
     private freeAgent: () => void;
 
@@ -35,6 +37,7 @@ export class Device extends GObject.Object {
     private _uuids: string[] | undefined;
     private _connecting: boolean = false;
     private _connectionCount: number;
+    private _batteryPercentage: number | undefined = undefined;
 
     static {
         GObject.registerClass(
@@ -125,6 +128,15 @@ export class Device extends GObject.Object {
                         "Device UUIDs",
                         GObject.ParamFlags.READABLE,
                     ),
+                    batteryPercentage: GObject.ParamSpec.int(
+                        "battery-percentage",
+                        "Battery Percentage",
+                        "Device battery percentage",
+                        GObject.ParamFlags.READABLE,
+                        -1,
+                        100,
+                        -1,
+                    ),
                 },
                 Signals: {
                     "device-changed": {},
@@ -155,6 +167,8 @@ export class Device extends GObject.Object {
 
         this._loadProperties();
         this._setupPropertyChangeListener();
+        this._setupBatteryInterface();
+        this._loadBatteryPercentage();
     }
 
     private _loadProperties(): void {
@@ -233,6 +247,54 @@ export class Device extends GObject.Object {
                 this.emit("device-changed");
             }
         });
+    }
+
+    private _setupBatteryInterface(): void {
+        try {
+            this.batteryProxy = Gio.DBusProxy.new_sync(
+                systemBus,
+                Gio.DBusProxyFlags.NONE,
+                null,
+                ORG_BLUEZ,
+                this._devicePath,
+                BLUEZ_BATTERY_1,
+                null,
+            );
+
+            this.batteryProxy.connect("g-properties-changed", (_, changed) => {
+                const percentageChanged = changed.lookup_value(
+                    "Percentage",
+                    null,
+                );
+                if (percentageChanged) {
+                    const newPercentage = percentageChanged.get_byte();
+                    if (this._batteryPercentage !== newPercentage) {
+                        this._batteryPercentage = newPercentage;
+                        this.notify("battery-percentage");
+                        this.emit("device-changed");
+                    }
+                }
+            });
+        } catch (e) {
+            log(`Error occured trying to find battery proxy: ${e}`);
+            // Not the end of the world, we won't do anything
+            this.batteryProxy = null;
+        }
+    }
+
+    private _loadBatteryPercentage(): void {
+        if (!this.batteryProxy) {
+            return;
+        }
+
+        try {
+            const percentage = this.batteryProxy
+                .get_cached_property("Percentage")
+                ?.deep_unpack() as number | undefined;
+            this._batteryPercentage = percentage;
+        } catch (e) {
+            // If we can't read it, oh well
+        }
     }
 
     private _setConnecting(connecting: boolean): void {
@@ -433,5 +495,9 @@ export class Device extends GObject.Object {
 
     get uuids(): Set<string> {
         return new Set(this._uuids ?? []);
+    }
+
+    get batteryPercentage(): number | undefined {
+        return this._batteryPercentage;
     }
 }
