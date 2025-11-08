@@ -11,6 +11,7 @@ export class FileTransferProgressDialog extends Adw.Dialog {
     private _progress_bar!: Gtk.ProgressBar;
     private _error_box!: Gtk.Box;
     private _error_label!: Gtk.Label;
+    private _error_icon!: Gtk.Image;
 
     static {
         GObject.registerClass(
@@ -26,6 +27,7 @@ export class FileTransferProgressDialog extends Adw.Dialog {
                     "progress_bar",
                     "error_box",
                     "error_label",
+                    "error_icon",
                 ],
                 Signals: {
                     cancelled: {},
@@ -92,6 +94,8 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         this._error_label.set_text("File transfer completed successfully");
         this._error_label.remove_css_class("error");
         this._error_box.set_visible(true);
+        this._error_icon.set_from_icon_name("folder-download-symbolic");
+        this._error_icon.remove_css_class("error");
 
         this._progress_bar.set_fraction(1.0);
     }
