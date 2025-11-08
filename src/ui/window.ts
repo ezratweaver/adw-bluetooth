@@ -55,10 +55,54 @@ export class Window extends Adw.ApplicationWindow {
             this,
         );
 
+        // Window shortcuts
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "window.close" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("<Control>w"),
+            }),
+        );
+
+        // Vim-style navigation shortcuts
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-down" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("j"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-up" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("k"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-select" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("Return"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-select" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("space"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-first" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("g+g"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-last" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("<Shift>g"),
             }),
         );
     }
@@ -127,6 +171,27 @@ export class Window extends Adw.ApplicationWindow {
 
         this.add_action(toggleDiscoveryAction);
         this.add_action(aboutAction);
+
+        // Vim-style navigation actions
+        const vimDownAction = new Gio.SimpleAction({ name: "vim-down" });
+        vimDownAction.connect("activate", () => this._vimNavigateDown());
+        this.add_action(vimDownAction);
+
+        const vimUpAction = new Gio.SimpleAction({ name: "vim-up" });
+        vimUpAction.connect("activate", () => this._vimNavigateUp());
+        this.add_action(vimUpAction);
+
+        const vimSelectAction = new Gio.SimpleAction({ name: "vim-select" });
+        vimSelectAction.connect("activate", () => this._vimSelectCurrent());
+        this.add_action(vimSelectAction);
+
+        const vimFirstAction = new Gio.SimpleAction({ name: "vim-first" });
+        vimFirstAction.connect("activate", () => this._vimNavigateFirst());
+        this.add_action(vimFirstAction);
+
+        const vimLastAction = new Gio.SimpleAction({ name: "vim-last" });
+        vimLastAction.connect("activate", () => this._vimNavigateLast());
+        this.add_action(vimLastAction);
     }
 
     private _setupPropertyBindings(): void {
@@ -233,6 +298,9 @@ export class Window extends Adw.ApplicationWindow {
          * 2. Known but not connected devices second
          * 3. Unknown/non paired devices last
          */
+        // Enable selection mode for vim navigation
+        this._devices_list.set_selection_mode(Gtk.SelectionMode.SINGLE);
+        
         this._devices_list.set_sort_func((row1, row2) => {
             const device1 = findDeviceByPath(row1.name);
             const device2 = findDeviceByPath(row2.name);
@@ -510,5 +578,73 @@ export class Window extends Adw.ApplicationWindow {
         bluetooth.destroy();
         this._incomingTransferManager.destroy();
         return super.vfunc_close_request();
+    }
+
+    // Vim-style navigation methods
+    private _vimNavigateDown(): void {
+        const selectedRow = this._devices_list.get_selected_row();
+        if (!selectedRow) {
+            // If no row is selected, select the first one
+            const firstRow = this._devices_list.get_row_at_index(0);
+            if (firstRow) {
+                this._devices_list.select_row(firstRow);
+            }
+            return;
+        }
+
+        const currentIndex = selectedRow.get_index();
+        const nextRow = this._devices_list.get_row_at_index(currentIndex + 1);
+        if (nextRow) {
+            this._devices_list.select_row(nextRow);
+        }
+    }
+
+    private _vimNavigateUp(): void {
+        const selectedRow = this._devices_list.get_selected_row();
+        if (!selectedRow) {
+            // If no row is selected, select the first one
+            const firstRow = this._devices_list.get_row_at_index(0);
+            if (firstRow) {
+                this._devices_list.select_row(firstRow);
+            }
+            return;
+        }
+
+        const currentIndex = selectedRow.get_index();
+        if (currentIndex > 0) {
+            const prevRow = this._devices_list.get_row_at_index(currentIndex - 1);
+            if (prevRow) {
+                this._devices_list.select_row(prevRow);
+            }
+        }
+    }
+
+    private _vimSelectCurrent(): void {
+        const selectedRow = this._devices_list.get_selected_row();
+        if (selectedRow) {
+            selectedRow.activate();
+        }
+    }
+
+    private _vimNavigateFirst(): void {
+        const firstRow = this._devices_list.get_row_at_index(0);
+        if (firstRow) {
+            this._devices_list.select_row(firstRow);
+        }
+    }
+
+    private _vimNavigateLast(): void {
+        // Get the last row by iterating through all rows
+        let lastRow = null;
+        let index = 0;
+        while (true) {
+            const row = this._devices_list.get_row_at_index(index);
+            if (!row) break;
+            lastRow = row;
+            index++;
+        }
+        if (lastRow) {
+            this._devices_list.select_row(lastRow);
+        }
     }
 }
