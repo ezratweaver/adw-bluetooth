@@ -3,7 +3,7 @@
   <gresource prefix="/com/ezratweaver/AdwBluetooth">
     <file>styles/style.css</file>
     <file preprocess="xml-stripblanks">ui/application-window.ui</file>
-    <file preprocess="xml-stripblanks">ui/device-details-modal.ui</file>
+    <file preprocess="xml-stripblanks">ui/device-details.ui</file>
     <file preprocess="xml-stripblanks">ui/pin-confirmation.ui</file>
     <file preprocess="xml-stripblanks">ui/file-transfer-progress.ui</file>
   </gresource>

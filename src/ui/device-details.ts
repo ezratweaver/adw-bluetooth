@@ -6,10 +6,7 @@ import { Device } from "../bluetooth/device.js";
 import { bluetooth } from "../bluetooth/bluetooth.js";
 import { BluetoothUUID } from "../bluetooth/device-metadata.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress.js";
-import {
-    showAlertDialog,
-    showDestructiveConfirmationDialog,
-} from "../services/dialog.js";
+import { showDestructiveConfirmationDialog } from "../services/dialog.js";
 import { showFilePicker } from "../services/filesystem.js";
 
 export class DeviceDetailsModal extends Adw.Window {
@@ -29,7 +26,7 @@ export class DeviceDetailsModal extends Adw.Window {
         GObject.registerClass(
             {
                 Template:
-                    "resource:///com/ezratweaver/AdwBluetooth/ui/device-details-modal.ui",
+                    "resource:///com/ezratweaver/AdwBluetooth/ui/device-details.ui",
                 InternalChildren: [
                     "connection_switch",
                     "connection_spinner",
