@@ -351,6 +351,19 @@ export class Window extends Adw.ApplicationWindow {
         return { row, spinner, statusLabel };
     }
 
+    private _displayDialogAsTopLevel(dialog: Adw.Dialog) {
+        // Find the focused window
+        const focused = Gtk.Window.list_toplevels().find((w) => w.is_focus());
+
+        // If no focused window, default to the first visible window we find.
+        const target =
+            focused || Gtk.Window.list_toplevels().find((w) => w.is_visible());
+
+        if (target) {
+            dialog.present(target);
+        }
+    }
+
     // Dialog methods
     private _showAbout() {
         const aboutDialog = new Adw.AboutDialog({
@@ -375,7 +388,7 @@ export class Window extends Adw.ApplicationWindow {
 
         dialog.add_response("ok", "OK");
 
-        dialog.present(this);
+        this._displayDialogAsTopLevel(dialog);
     };
 
     private _showConfirmationDialog(
@@ -400,7 +413,7 @@ export class Window extends Adw.ApplicationWindow {
             );
         });
 
-        dialog.present(this);
+        this._displayDialogAsTopLevel(dialog);
     }
 
     private _showAuthorizationDialog(devicePath: string, requestId: string) {
@@ -428,9 +441,10 @@ export class Window extends Adw.ApplicationWindow {
             }
         });
 
-        dialog.present(this);
+        this._displayDialogAsTopLevel(dialog);
     }
 
+    // Display pin for other device to use to pair
     private _showPinDisplayDialog(devicePath: string, pincode: string) {
         const device = this._findDeviceByPath(devicePath);
 
@@ -440,9 +454,10 @@ export class Window extends Adw.ApplicationWindow {
             true,
         );
 
-        dialog.present(this);
+        this._displayDialogAsTopLevel(dialog);
     }
 
+    // Display passkey for other device to use to pair
     private _showPasskeyDisplayDialog(devicePath: string, passkey: number) {
         const device = this._findDeviceByPath(devicePath);
 
@@ -452,7 +467,7 @@ export class Window extends Adw.ApplicationWindow {
             true,
         );
 
-        dialog.present(this);
+        this._displayDialogAsTopLevel(dialog);
     }
 
     private _showIncomingTransferDialog(
@@ -489,7 +504,7 @@ export class Window extends Adw.ApplicationWindow {
             }
         });
 
-        dialog.present(this);
+        this._displayDialogAsTopLevel(dialog);
     }
 
     private _showIncomingTransferProgress(
@@ -513,7 +528,8 @@ export class Window extends Adw.ApplicationWindow {
         });
 
         this._incomingTransferDialogs.set(transferPath, progressDialog);
-        progressDialog.present(this);
+
+        this._displayDialogAsTopLevel(progressDialog);
     }
 
     private _updateIncomingTransferProgress(
