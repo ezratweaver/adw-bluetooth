@@ -380,7 +380,11 @@ export class Device extends GObject.Object {
     }
 
     get alias(): string {
-        return this._alias || "Unknown Device";
+        return this._alias
+            ? GLib.utf8_make_valid(this._alias, -1)
+            : // The only time alias will be undefined, is if
+              // somehow we received a partial object from obex (very unlikely)
+              "Unknown Device";
     }
 
     get blocked(): boolean {
