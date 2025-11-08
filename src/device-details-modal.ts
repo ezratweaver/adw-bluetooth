@@ -194,6 +194,7 @@ export class DeviceDetailsModal extends Adw.Window {
         let signalIds: number[] = [];
 
         const progressDialog = new FileTransferProgressDialog(
+            "Preparing...",
             this.device.alias,
         );
 
@@ -238,7 +239,7 @@ export class DeviceDetailsModal extends Adw.Window {
             }
 
             progressDialog.hideError();
-            progressDialog.updateCurrentFile(currentFilePath);
+            progressDialog.updateFrom(currentFilePath);
             progressDialog.updateProgress(0, 1);
 
             signalIds.push(

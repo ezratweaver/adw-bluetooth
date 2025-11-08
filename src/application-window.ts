@@ -210,19 +210,35 @@ export class Window extends Adw.ApplicationWindow {
         if (bluetoothManager.adapter.obexManager) {
             bluetoothManager.adapter.obexManager.connect(
                 "receive-file-request",
-                (_, requestId: string, filename: string, size: string) => {
-                    this._showObexAuthorizationDialog(
+                (
+                    _,
+                    requestId: string,
+                    filename: string,
+                    size: string,
+                    deviceAddress: string,
+                ) => {
+                    this._showIncomingTransferDialog(
                         requestId,
                         filename,
                         size,
+                        deviceAddress,
                     );
                 },
             );
 
             bluetoothManager.adapter.obexManager.connect(
                 "transfer-started",
-                (_, transferPath: string, filename: string) =>
-                    this._showIncomingTransferProgress(transferPath, filename),
+                (
+                    _,
+                    transferPath: string,
+                    filename: string,
+                    deviceAddress: string,
+                ) =>
+                    this._showIncomingTransferProgress(
+                        transferPath,
+                        filename,
+                        deviceAddress,
+                    ),
             );
 
             bluetoothManager.adapter.obexManager.connect(
@@ -285,6 +301,12 @@ export class Window extends Adw.ApplicationWindow {
     private _findDeviceByPath(devicePath: string): Device | undefined {
         return bluetoothManager.adapter?.devices.find(
             (d) => d.devicePath === devicePath,
+        );
+    }
+
+    private _findDeviceByAddress(deviceAddress: string): Device | undefined {
+        return bluetoothManager.adapter?.devices.find(
+            (d) => d.address === deviceAddress,
         );
     }
 
@@ -432,16 +454,21 @@ export class Window extends Adw.ApplicationWindow {
         dialog.present(this);
     }
 
-    private _showObexAuthorizationDialog(
+    private _showIncomingTransferDialog(
         requestId: string,
         filename: string,
         size: string,
+        deviceAddress: string,
     ) {
         const sizeInMB = (parseInt(size) / 1024 / 1024).toFixed(2);
 
+        // Find device by address to get the device name
+        const device = this._findDeviceByAddress(deviceAddress);
+        const deviceName = device?.alias || deviceAddress;
+
         const dialog = new Adw.AlertDialog({
             heading: "Incoming File Transfer",
-            body: `A device wants to send you the file "${filename}" (${sizeInMB} MB).\n\nDo you want to accept this file?`,
+            body: `Device "${deviceName}" wants to send you the file "${filename}" (${sizeInMB} MB).\n\nDo you want to accept this file?`,
             closeResponse: "reject",
             defaultResponse: "accept",
         });
@@ -467,9 +494,16 @@ export class Window extends Adw.ApplicationWindow {
     private _showIncomingTransferProgress(
         transferPath: string,
         filename: string,
+        deviceAddress: string,
     ) {
-        const progressDialog = new FileTransferProgressDialog("Unknown Device");
-        progressDialog.updateCurrentFile(filename);
+        // Find device by address to get the device name
+        const device = this._findDeviceByAddress(deviceAddress);
+        const deviceName = device?.alias || deviceAddress;
+
+        const progressDialog = new FileTransferProgressDialog(
+            deviceName,
+            filename,
+        );
         progressDialog.updateProgress(0, 1);
 
         progressDialog.connect("cancelled", () => {

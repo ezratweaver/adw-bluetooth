@@ -31,8 +31,8 @@ export class ObexManager extends GObject.Object {
             {
                 Signals: {
                     "transfer-started": {
-                        // transferPath, filename
-                        param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING],
+                        // transferPath, filename, deviceAddress
+                        param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_STRING],
                     },
                     "transfer-progress": {
                         // transferPath, bytesTransferred, totalBytes
@@ -51,8 +51,9 @@ export class ObexManager extends GObject.Object {
                         param_types: [GObject.TYPE_STRING],
                     },
                     "receive-file-request": {
-                        // requestId, filename, sizeInBytes
+                        // requestId, filename, sizeInBytes, deviceAddress
                         param_types: [
+                            GObject.TYPE_STRING,
                             GObject.TYPE_STRING,
                             GObject.TYPE_STRING,
                             GObject.TYPE_STRING,
@@ -378,6 +379,9 @@ export class ObexManager extends GObject.Object {
                         filenameVariant?.get_string()[0] ??
                         `bluetooth-file-${new Date().getTime()}.tmp`;
 
+                    // Get device address from session
+                    const deviceAddress = this._getDeviceAddressFromTransfer(transferProxy);
+
                     const requestId = `obex-auth-${Date.now()}`;
                     this.pendingAuthorizations.set(requestId, {
                         invocation,
@@ -392,6 +396,7 @@ export class ObexManager extends GObject.Object {
                         requestId,
                         filename,
                         size.toString(),
+                        deviceAddress,
                     );
                     break;
                 }
@@ -439,6 +444,39 @@ export class ObexManager extends GObject.Object {
         }
     }
 
+    private _getDeviceAddressFromTransfer(transferProxy: Gio.DBusProxy): string {
+        try {
+            // Get the session object path from the transfer
+            const sessionVariant = transferProxy.get_cached_property("Session");
+            if (!sessionVariant) {
+                log("No session property found on transfer");
+                return "Unknown Device";
+            }
+            
+            const sessionPath = sessionVariant.get_string()[0];
+            
+            // Create a proxy for the session
+            const sessionProxy = Gio.DBusProxy.new_sync(
+                sessionBus,
+                Gio.DBusProxyFlags.NONE,
+                null,
+                ORG_BLUEZ_OBEX,
+                sessionPath,
+                "org.bluez.obex.Session1",
+                null,
+            );
+            
+            // Get device address from session
+            const destinationVariant = sessionProxy.get_cached_property("Destination");
+            const deviceAddress = destinationVariant?.get_string()[0] || "Unknown Device";
+            
+            return deviceAddress;
+        } catch (error) {
+            log(`Failed to get device address from transfer: ${error}`);
+            return "Unknown Device";
+        }
+    }
+
     private _monitorIncomingTransfer(
         transferPath: string,
         transferProxy: Gio.DBusProxy,
@@ -451,7 +489,10 @@ export class ObexManager extends GObject.Object {
             const filenameVariant = transferProxy.get_cached_property("Name");
             const filename = filenameVariant?.get_string()[0] || "unknown_file";
 
-            this.emit("transfer-started", transferPath, filename);
+            // Get device address for the transfer
+            const deviceAddress = this._getDeviceAddressFromTransfer(transferProxy);
+
+            this.emit("transfer-started", transferPath, filename, deviceAddress);
         } catch (error) {
             log(`Failed to monitor incoming transfer: ${error}`);
         }

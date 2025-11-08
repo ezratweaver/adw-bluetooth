@@ -34,10 +34,11 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         );
     }
 
-    constructor(deviceName: string) {
+    constructor(fromName: string, toName: string) {
         super();
 
-        this._to_label.set_text(deviceName);
+        this._from_label.set_text(fromName);
+        this._to_label.set_text(toName);
 
         this._cancel_button.connect("clicked", () => {
             this.emit("cancelled");
@@ -54,8 +55,12 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         this._progress_bar.set_fraction(progress);
     }
 
-    public updateCurrentFile(filePath: string): void {
-        this._from_label.set_text(filePath);
+    public updateFrom(fromName: string): void {
+        this._from_label.set_text(fromName);
+    }
+
+    public updateTo(toName: string): void {
+        this._to_label.set_text(toName);
     }
 
     public showError(error: string): void {
