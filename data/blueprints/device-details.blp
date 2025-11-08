@@ -59,6 +59,15 @@ template $Gjs_DeviceDetailsModal: Adw.Window {
           ];
         }
 
+        Adw.ActionRow battery_row {
+          title: "Battery";
+          visible: false;
+
+          css-classes: [
+            "property",
+          ];
+        }
+
         Adw.ActionRow type_row {
           title: "Type";
 

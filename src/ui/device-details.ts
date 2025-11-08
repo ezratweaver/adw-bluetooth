@@ -16,6 +16,7 @@ export class DeviceDetailsModal extends Adw.Window {
     private _paired_row!: Adw.ActionRow;
     private _type_row!: Adw.ActionRow;
     private _address_row!: Adw.ActionRow;
+    private _battery_row!: Adw.ActionRow;
     private _send_files_group!: Adw.PreferencesGroup;
     private _send_files_button!: Adw.ButtonRow;
     private _forget_button!: Adw.ButtonRow;
@@ -33,6 +34,7 @@ export class DeviceDetailsModal extends Adw.Window {
                     "paired_row",
                     "type_row",
                     "address_row",
+                    "battery_row",
                     "send_files_group",
                     "send_files_button",
                     "forget_button",
@@ -54,6 +56,13 @@ export class DeviceDetailsModal extends Adw.Window {
         this._paired_row.set_subtitle(device.paired ? "Yes" : "No");
         this._type_row.set_subtitle(device.deviceType);
         this._address_row.set_subtitle(device.address);
+
+        if (this.device.batteryPercentage) {
+            this._battery_row.set_subtitle(`${this.device.batteryPercentage}%`);
+            this._battery_row.set_visible(true);
+        } else {
+            this._battery_row.set_visible(false);
+        }
 
         this._device_icon.set_from_icon_name(
             device.icon || "bluetooth-symbolic",
