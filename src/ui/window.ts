@@ -11,7 +11,7 @@ import {
     showAlertDialog,
     displayDialogAsTopLevel,
 } from "../services/dialog.js";
-import { findDeviceByPath } from "../services/device.js";
+import { findDeviceByPath } from "../services/find-by-device.js";
 import { IncomingTransferManager } from "../services/incoming-transfer-manager.js";
 
 export class Window extends Adw.ApplicationWindow {

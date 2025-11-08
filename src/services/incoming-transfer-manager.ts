@@ -4,7 +4,7 @@ import { FileTransferProgressDialog } from "../ui/file-transfer-progress.js";
 import { formatBytesToHumanReadable } from "./formatting.js";
 import { displayDialogAsTopLevel } from "./dialog.js";
 import { moveFileToDownloads } from "./filesystem.js";
-import { findDeviceByAddress } from "./device.js";
+import { findDeviceByAddress } from "./find-by-device.js";
 
 export class IncomingTransferManager {
     private incomingTransfers: Map<string, FileTransferProgressDialog> =

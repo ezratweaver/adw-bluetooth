@@ -10,7 +10,7 @@
     <file>services/formatting.js</file>
     <file>services/dialog.js</file>
     <file>services/filesystem.js</file>
-    <file>services/device.js</file>
+    <file>services/find-by-device.js</file>
     <file>services/device-metadata.js</file>
     <file>services/incoming-transfer-manager.js</file>
     <file>bluetooth/bluetooth.js</file>
