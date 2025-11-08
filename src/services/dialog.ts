@@ -4,14 +4,16 @@ import Gtk from "gi://Gtk?version=4.0";
 /**
  * Display a dialog at the top level of the window hierarchy
  */
-export function displayDialogAsTopLevel(dialog: Gtk.Widget): void {
-    let topLevel = dialog.get_root() as Gtk.Window;
+export function displayDialogAsTopLevel(dialog: Adw.Dialog): void {
+    const focusedWindow = Gtk.Window.list_toplevels().find((w) => w.is_focus());
+    const visibleWindow = Gtk.Window.list_toplevels().find((w) =>
+        w.is_visible(),
+    );
 
-    while (topLevel.get_transient_for()) {
-        topLevel = topLevel.get_transient_for()!;
+    const target = focusedWindow || visibleWindow;
+    if (target) {
+        dialog.present(target);
     }
-
-    (dialog as any).present(topLevel);
 }
 
 /**
