@@ -217,7 +217,7 @@ export class Window extends Adw.ApplicationWindow {
 
         if (bluetooth.obex) {
             bluetooth.obex.connect(
-                "receive-file-request",
+                "incoming-transfer-request",
                 (
                     _,
                     requestId: string,

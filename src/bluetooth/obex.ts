@@ -30,14 +30,6 @@ export class ObexManager extends GObject.Object {
         GObject.registerClass(
             {
                 Signals: {
-                    "incoming-transfer-started": {
-                        // transferPath, filename, deviceAddress
-                        param_types: [
-                            GObject.TYPE_STRING,
-                            GObject.TYPE_STRING,
-                            GObject.TYPE_STRING,
-                        ],
-                    },
                     "transfer-progress": {
                         // transferPath, bytesTransferred, totalBytes
                         param_types: [
@@ -54,7 +46,15 @@ export class ObexManager extends GObject.Object {
                         // transferPath
                         param_types: [GObject.TYPE_STRING],
                     },
-                    "receive-file-request": {
+                    "incoming-transfer-started": {
+                        // transferPath, filename, deviceAddress
+                        param_types: [
+                            GObject.TYPE_STRING,
+                            GObject.TYPE_STRING,
+                            GObject.TYPE_STRING,
+                        ],
+                    },
+                    "incoming-transfer-request": {
                         // requestId, filename, sizeInBytes, deviceAddress
                         param_types: [
                             GObject.TYPE_STRING,
@@ -396,7 +396,7 @@ export class ObexManager extends GObject.Object {
 
                     // Emit signal for UI to handle authorization
                     this.emit(
-                        "receive-file-request",
+                        "incoming-transfer-request",
                         requestId,
                         filename,
                         size.toString(),
