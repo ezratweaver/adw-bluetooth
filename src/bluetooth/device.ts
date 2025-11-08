@@ -225,15 +225,6 @@ export class Device extends GObject.Object {
                                 : dbusProp.toLowerCase();
                         this.notify(notifyProp);
                         changed_any = true;
-
-                        // Notify displayName if alias, name, or address changed
-                        if (
-                            dbusProp === "Alias" ||
-                            dbusProp === "Name" ||
-                            dbusProp === "Address"
-                        ) {
-                            this.notify("display-name");
-                        }
                     }
                 }
             }
