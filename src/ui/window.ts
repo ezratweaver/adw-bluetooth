@@ -649,7 +649,23 @@ export class Window extends Adw.ApplicationWindow {
         this._enableVimMode();
         const selectedRow = this._devices_list.get_selected_row();
         if (selectedRow) {
-            selectedRow.activate();
+            try {
+                const device = findDeviceByPath(selectedRow.name);
+                if (device && !device.connecting) {
+                    if (!device.paired) {
+                        // Device not paired - pair it
+                        this._handleDevicePair(device);
+                    } else if (device.connected) {
+                        // Device connected - disconnect it
+                        device.disconnectDevice();
+                    } else {
+                        // Device paired but not connected - connect it
+                        device.connectDevice();
+                    }
+                }
+            } catch (e) {
+                log(`Error occured interacting with device: ${e}`);
+            }
         }
     }
 
