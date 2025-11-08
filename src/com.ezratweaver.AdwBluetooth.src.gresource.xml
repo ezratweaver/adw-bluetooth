@@ -7,6 +7,10 @@
     <file>ui/pin-confirmation.js</file>
     <file>ui/file-transfer-progress.js</file>
     <file>services/gsettings.js</file>
+    <file>services/formatting.js</file>
+    <file>services/dialog.js</file>
+    <file>services/filesystem.js</file>
+    <file>services/device.js</file>
     <file>bluetooth/bluetooth.js</file>
     <file>bluetooth/adapter.js</file>
     <file>bluetooth/device.js</file>

@@ -6,6 +6,8 @@ import { Device } from "../bluetooth/device.js";
 import { bluetooth } from "../bluetooth/bluetooth.js";
 import { BluetoothUUID } from "../bluetooth/device-metadata.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress.js";
+import { showAlertDialog, showConfirmationDialog } from "../services/dialog.js";
+import { showFilePicker } from "../services/filesystem.js";
 
 export class DeviceDetailsModal extends Adw.Window {
     private device: Device;
@@ -109,81 +111,47 @@ export class DeviceDetailsModal extends Adw.Window {
         });
 
         this._send_files_button.connect("activated", () => {
-            this.showFilePicker();
+            this.openFileDialog();
         });
 
         this._forget_button.connect("activated", () => {
-            this.showForgetDialog();
+            this.confirmForgetDevice();
         });
     }
 
-    private showForgetDialog(): void {
-        const dialog = new Adw.AlertDialog({
-            heading: "Forget Device?",
-            body: `"${this.device.alias}" will be removed from your saved devices. You will have to set it up again to use it.`,
-        });
-
-        dialog.add_response("cancel", "Cancel");
-        dialog.add_response("forget", "Forget");
-        dialog.set_response_appearance(
-            "forget",
-            Adw.ResponseAppearance.DESTRUCTIVE,
+    private async confirmForgetDevice(): Promise<void> {
+        const confirmed = await showConfirmationDialog(
+            this,
+            "Forget Device?",
+            `"${this.device.alias}" will be removed from your saved devices. You will have to set it up again to use it.`,
+            "Forget",
+            "Cancel"
         );
 
-        dialog.connect("response", (_, response) => {
-            if (response === "forget") {
-                bluetooth.adapter?.removeDevice(this.device.devicePath);
-                this.close();
-            }
-        });
-
-        dialog.present(this);
+        if (confirmed) {
+            bluetooth.adapter?.removeDevice(this.device.devicePath);
+            this.close();
+        }
     }
 
-    private showFilePicker(): void {
-        const fileDialog = new Gtk.FileDialog({
-            title: "Choose files to send",
-            modal: true,
-        });
-
-        fileDialog.open_multiple(this, null, async (dialog, result) => {
-            try {
-                const files = dialog?.open_multiple_finish(result);
-                if (!files || files.get_n_items() === 0) {
-                    return;
-                }
-
-                const fileArray: Gio.File[] = [];
-                for (let i = 0; i < files.get_n_items(); i++) {
-                    fileArray.push(files.get_item(i) as Gio.File);
-                }
-
-                await this.sendFiles(fileArray);
-            } catch (error: any) {
-                if (error.code !== Gio.IOErrorEnum.CANCELLED) {
-                    log(`File dialog error: ${error}`);
-                }
-            }
-        });
+    private async openFileDialog(): Promise<void> {
+        const files = await showFilePicker(this);
+        if (files) {
+            await this.sendFiles(files);
+        }
     }
 
     private async sendFiles(files: Gio.File[]): Promise<void> {
         const obex = bluetooth.obex;
         if (!obex) {
-            this.showDialog(
-                "OBEX not available",
-                "File sending is not supported on this system.",
-            );
+            showAlertDialog(this, "OBEX not available", "File sending is not supported on this system.");
             return;
         }
 
         const sessionPath = await obex.createSession(this.device.address);
 
         if (!sessionPath) {
-            this.showDialog(
-                "Connection failed",
-                "Could not establish connection to device.",
-            );
+            showAlertDialog(this, "Connection failed", "Could not establish connection to device.");
             return;
         }
 
@@ -220,7 +188,7 @@ export class DeviceDetailsModal extends Adw.Window {
                     files.length === 1
                         ? `"${files[0].get_basename()}" was sent to ${this.device.alias}.`
                         : `${files.length} files were sent to ${this.device.alias}.`;
-                this.showDialog("Files sent successfully", message);
+                showAlertDialog(this,"Files sent successfully", message);
                 cleanupSignals();
                 cleanupSession();
                 return;
@@ -303,12 +271,4 @@ export class DeviceDetailsModal extends Adw.Window {
         await processNextFile();
     }
 
-    private showDialog(heading: string, body: string): void {
-        const dialog = new Adw.AlertDialog({
-            heading,
-            body,
-        });
-        dialog.add_response("ok", "OK");
-        dialog.present(this);
-    }
 }

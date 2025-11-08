@@ -7,7 +7,16 @@ import { DeviceDetailsModal } from "./device-details.js";
 import { PinConfirmationDialog } from "./pin-confirmation.js";
 import { FileTransferProgressDialog } from "./file-transfer-progress.js";
 import Gio from "gi://Gio?version=2.0";
-import GLib from "gi://GLib?version=2.0";
+import {
+    formatPin,
+    formatBytesToHumanReadable,
+} from "../services/formatting.js";
+import {
+    showAlertDialog,
+    displayDialogAsTopLevel,
+} from "../services/dialog.js";
+import { moveFileToDownloads } from "../services/filesystem.js";
+import { findDeviceByPath, findDeviceByAddress } from "../services/device.js";
 
 export class Window extends Adw.ApplicationWindow {
     private _bluetooth_toggle!: Gtk.Switch;
@@ -275,8 +284,8 @@ export class Window extends Adw.ApplicationWindow {
          * 3. Unknown/non paired devices last
          */
         this._devices_list.set_sort_func((row1, row2) => {
-            const device1 = this._findDeviceByPath(row1.name);
-            const device2 = this._findDeviceByPath(row2.name);
+            const device1 = findDeviceByPath(row1.name);
+            const device2 = findDeviceByPath(row2.name);
 
             if (!device1 || !device2) return 0;
 
@@ -294,18 +303,6 @@ export class Window extends Adw.ApplicationWindow {
 
         bluetooth.adapter.devices.forEach(({ devicePath }) =>
             this._addDevice(devicePath),
-        );
-    }
-
-    private _findDeviceByPath(devicePath: string): Device | undefined {
-        return bluetooth.adapter?.devices.find(
-            (d) => d.devicePath === devicePath,
-        );
-    }
-
-    private _findDeviceByAddress(deviceAddress: string): Device | undefined {
-        return bluetooth.adapter?.devices.find(
-            (d) => d.address === deviceAddress,
         );
     }
 
@@ -349,19 +346,6 @@ export class Window extends Adw.ApplicationWindow {
         return { row, spinner, statusLabel };
     }
 
-    private _displayDialogAsTopLevel(dialog: Adw.Dialog) {
-        // Find the focused window
-        const focused = Gtk.Window.list_toplevels().find((w) => w.is_focus());
-
-        // If no focused window, default to the first visible window we find.
-        const target =
-            focused || Gtk.Window.list_toplevels().find((w) => w.is_visible());
-
-        if (target) {
-            dialog.present(target);
-        }
-    }
-
     // Dialog methods
     private _showAbout() {
         const aboutDialog = new Adw.AboutDialog({
@@ -377,16 +361,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _showError = (error: ErrorPopUp) => {
-        const dialog = new Adw.AlertDialog({
-            heading: error.title,
-            body: error.description,
-            closeResponse: "ok",
-            defaultResponse: "ok",
-        });
-
-        dialog.add_response("ok", "OK");
-
-        this._displayDialogAsTopLevel(dialog);
+        showAlertDialog(this, error.title, error.description);
     };
 
     private _showConfirmationDialog(
@@ -394,11 +369,11 @@ export class Window extends Adw.ApplicationWindow {
         requestId: string,
         passkey: number,
     ) {
-        const device = this._findDeviceByPath(devicePath);
+        const device = findDeviceByPath(devicePath);
 
         const dialog = new PinConfirmationDialog(
             device?.alias ?? "Unknown Device",
-            passkey.toString().padStart(6, "0"),
+            formatPin(passkey),
         );
 
         dialog.connect("confirmed", () => {
@@ -409,11 +384,11 @@ export class Window extends Adw.ApplicationWindow {
             bluetooth.adapter?.bluetoothAgent.cancelConfirmation(requestId);
         });
 
-        this._displayDialogAsTopLevel(dialog);
+        displayDialogAsTopLevel(dialog);
     }
 
     private _showAuthorizationDialog(devicePath: string, requestId: string) {
-        const device = this._findDeviceByPath(devicePath);
+        const device = findDeviceByPath(devicePath);
 
         const dialog = new Adw.AlertDialog({
             heading: "Bluetooth Pairing Request",
@@ -437,12 +412,12 @@ export class Window extends Adw.ApplicationWindow {
             }
         });
 
-        this._displayDialogAsTopLevel(dialog);
+        displayDialogAsTopLevel(dialog);
     }
 
     // Display pin for other device to use to pair
     private _showPinDisplayDialog(devicePath: string, pincode: string) {
-        const device = this._findDeviceByPath(devicePath);
+        const device = findDeviceByPath(devicePath);
 
         const dialog = new PinConfirmationDialog(
             device?.alias ?? "Unknown Device",
@@ -450,20 +425,20 @@ export class Window extends Adw.ApplicationWindow {
             true,
         );
 
-        this._displayDialogAsTopLevel(dialog);
+        displayDialogAsTopLevel(dialog);
     }
 
     // Display passkey for other device to use to pair
     private _showPasskeyDisplayDialog(devicePath: string, passkey: number) {
-        const device = this._findDeviceByPath(devicePath);
+        const device = findDeviceByPath(devicePath);
 
         const dialog = new PinConfirmationDialog(
             device?.alias ?? "Unknown Device",
-            passkey.toString().padStart(6, "0"),
+            formatPin(passkey),
             true,
         );
 
-        this._displayDialogAsTopLevel(dialog);
+        displayDialogAsTopLevel(dialog);
     }
 
     private _showIncomingTransferDialog(
@@ -472,15 +447,15 @@ export class Window extends Adw.ApplicationWindow {
         size: string,
         deviceAddress: string,
     ) {
-        const sizeInMB = (parseInt(size) / 1024 / 1024).toFixed(2);
+        const humanReadableSize = formatBytesToHumanReadable(parseInt(size));
 
         // Find device by address to get the device name
-        const device = this._findDeviceByAddress(deviceAddress);
+        const device = findDeviceByAddress(deviceAddress);
         const deviceName = device?.alias || deviceAddress;
 
         const dialog = new Adw.AlertDialog({
             heading: "Incoming File Transfer",
-            body: `Device "${deviceName}" wants to send you the file "${filename}" (${sizeInMB} MB).\n\nDo you want to accept this file?`,
+            body: `Device "${deviceName}" wants to send you the file "${filename}" (${humanReadableSize}).\n\nDo you want to accept this file?`,
             closeResponse: "reject",
             defaultResponse: "accept",
         });
@@ -496,7 +471,7 @@ export class Window extends Adw.ApplicationWindow {
             }
         });
 
-        this._displayDialogAsTopLevel(dialog);
+        displayDialogAsTopLevel(dialog);
     }
 
     private _showIncomingTransferProgress(
@@ -505,7 +480,7 @@ export class Window extends Adw.ApplicationWindow {
         deviceAddress: string,
     ) {
         // Find device by address to get the device name
-        const device = this._findDeviceByAddress(deviceAddress);
+        const device = findDeviceByAddress(deviceAddress);
         const deviceName = device?.alias || deviceAddress;
 
         const progressDialog = new FileTransferProgressDialog(
@@ -521,7 +496,7 @@ export class Window extends Adw.ApplicationWindow {
 
         this._incomingTransferDialogs.set(transferPath, progressDialog);
 
-        this._displayDialogAsTopLevel(progressDialog);
+        displayDialogAsTopLevel(progressDialog);
     }
 
     private _updateIncomingTransferProgress(
@@ -535,7 +510,7 @@ export class Window extends Adw.ApplicationWindow {
         }
     }
 
-    private _onIncomingTransferCompleted(
+    private async _onIncomingTransferCompleted(
         transferPath: string,
         filename: string,
     ) {
@@ -545,36 +520,13 @@ export class Window extends Adw.ApplicationWindow {
             this._incomingTransferDialogs.delete(transferPath);
 
             // Move file from .cache to Downloads
-            this._moveFileToDownloads(filename);
+            await moveFileToDownloads(filename);
 
             const toast = new Adw.Toast({
                 title: "File received successfully",
                 timeout: 3,
             });
             this._toast_overlay.add_toast(toast);
-        }
-    }
-
-    private _moveFileToDownloads(filename: string): void {
-        try {
-            const sourceePath =
-                GLib.get_home_dir() + "/.cache/obexd/" + filename;
-            const destPath = GLib.get_home_dir() + "/Downloads/" + filename;
-
-            const sourceFile = Gio.File.new_for_path(sourceePath);
-            const destFile = Gio.File.new_for_path(destPath);
-
-            // Check if source file exists
-            if (!sourceFile.query_exists(null)) {
-                log(`Source file not found: ${sourceePath}`);
-                return;
-            }
-
-            // Move the file
-            sourceFile.move(destFile, Gio.FileCopyFlags.OVERWRITE, null, null);
-            log(`File moved from ${sourceePath} to ${destPath}`);
-        } catch (error) {
-            log(`Failed to move file to Downloads: ${error}`);
         }
     }
 
@@ -593,7 +545,7 @@ export class Window extends Adw.ApplicationWindow {
 
     // Device management methods
     private _addDevice(devicePath: string) {
-        const device = this._findDeviceByPath(devicePath);
+        const device = findDeviceByPath(devicePath);
         if (!device) {
             return;
         }
