@@ -85,7 +85,11 @@ export class FileTransferProgressDialog extends Adw.Dialog {
     }
 
     public showCompleted(): void {
+        // Disable focus, so GTK errors don't happen
+        this._cancel_button.set_can_focus(false);
         this._cancel_button.set_visible(false);
+
+        this._retry_button.set_can_focus(false);
         this._retry_button.set_visible(false);
 
         this._ok_button.set_visible(true);
