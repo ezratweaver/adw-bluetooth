@@ -194,12 +194,26 @@ export class Adapter extends GObject.Object {
                         (device) => device.devicePath === path,
                     );
 
+                    const limboDeviceIndex = this.devices.findIndex(
+                        (device) => device.devicePath === path,
+                    );
+
                     if (deviceIndex !== -1) {
                         this.devices.splice(deviceIndex, 1);
+
                         this.devicePaths = this.devicePaths.filter(
                             (p) => p !== path,
                         );
+
                         this.emit("device-removed", path);
+                    }
+
+                    if (limboDeviceIndex !== -1) {
+                        this._limboDevices.splice(limboDeviceIndex, 1);
+
+                        this.devicePaths = this.devicePaths.filter(
+                            (p) => p !== path,
+                        );
                     }
                 }
             },
