@@ -97,7 +97,7 @@ export class Window extends Adw.ApplicationWindow {
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-first" }),
-                trigger: Gtk.ShortcutTrigger.parse_string("g+g"),
+                trigger: Gtk.ShortcutTrigger.parse_string("g"),
             }),
         );
 
@@ -300,9 +300,6 @@ export class Window extends Adw.ApplicationWindow {
          * 2. Known but not connected devices second
          * 3. Unknown/non paired devices last
          */
-        // Start with no selection mode
-        this._devices_list.set_selection_mode(Gtk.SelectionMode.NONE);
-        
         this._devices_list.set_sort_func((row1, row2) => {
             const device1 = findDeviceByPath(row1.name);
             const device2 = findDeviceByPath(row2.name);
@@ -485,15 +482,12 @@ export class Window extends Adw.ApplicationWindow {
             statusLabel,
         });
 
-        // Add mouse event handler to disable vim mode
-        const eventController = new Gtk.EventControllerLegacy();
-        eventController.connect("event", (_, event) => {
-            if (event.get_event_type() === Gdk.EventType.BUTTON_PRESS) {
-                this._disableVimMode();
-            }
-            return false;
+        // Disable vim mode if mouse hovers over row
+        const motionController = new Gtk.EventControllerMotion();
+        motionController.connect("motion", () => {
+            this._disableVimMode();
         });
-        row.add_controller(eventController);
+        row.add_controller(motionController);
 
         row.connect("activated", () => {
             if (!device.connecting) {
@@ -642,7 +636,9 @@ export class Window extends Adw.ApplicationWindow {
 
         const currentIndex = selectedRow.get_index();
         if (currentIndex > 0) {
-            const prevRow = this._devices_list.get_row_at_index(currentIndex - 1);
+            const prevRow = this._devices_list.get_row_at_index(
+                currentIndex - 1,
+            );
             if (prevRow) {
                 this._devices_list.select_row(prevRow);
             }
