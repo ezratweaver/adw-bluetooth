@@ -37,7 +37,7 @@ bin_conf.set('resource_path', '/com/ezratweaver/AdwBluetooth')
 
 app_launcher = configure_file(
   input: 'com.ezratweaver.AdwBluetooth.in',
-  output: 'com.ezratweaver.AdwBluetooth',
+  output: 'adw-bluetooth',
   configuration: bin_conf,
   install: true,
   install_dir: get_option('bindir')

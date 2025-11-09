@@ -10,7 +10,7 @@
     "build-options": {
         "append-path": "/usr/lib/sdk/node20/bin:/usr/lib/sdk/typescript/bin"
     },
-    "command": "com.ezratweaver.AdwBluetooth",
+    "command": "adw-bluetooth",
     "finish-args": [
         "--share=ipc",
         "--device=dri",
