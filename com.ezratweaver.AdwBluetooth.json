@@ -7,7 +7,6 @@
         "org.freedesktop.Sdk.Extension.node20",
         "org.freedesktop.Sdk.Extension.typescript"
     ],
-    "tags": ["nightly"],
     "build-options": {
         "append-path": "/usr/lib/sdk/node20/bin:/usr/lib/sdk/typescript/bin"
     },
@@ -19,6 +18,7 @@
         "--socket=fallback-x11",
         "--env=GJS_DISABLE_JIT=1",
         "--system-talk-name=org.bluez",
+        "--talk-name=org.bluez.obex",
         "--talk-name=org.freedesktop.DBus",
         "--talk-name=org.freedesktop.NetworkManager"
     ],
