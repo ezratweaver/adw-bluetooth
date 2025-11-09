@@ -18,8 +18,6 @@ export class Adapter extends GObject.Object {
     private adapterProxy: Gio.DBusProxy;
     private agent: BluetoothAgent;
 
-    private discoveryTimeoutId: number | null = null;
-
     private _powered: boolean = false;
     private _discovering: boolean = false;
     private _devices: Device[] = [];
@@ -76,10 +74,6 @@ export class Adapter extends GObject.Object {
         this._loadProperties();
         this._setupPropertyChangeListener();
         this._syncSavedDevices();
-
-        if (this._powered) {
-            this.startDiscovery();
-        }
     }
 
     private _loadProperties(): void {
@@ -285,10 +279,6 @@ export class Adapter extends GObject.Object {
     }
 
     public stopDiscovery() {
-        if (this.discoveryTimeoutId) {
-            GLib.source_remove(this.discoveryTimeoutId);
-        }
-
         this.adapterProxy.call_sync(
             "StopDiscovery",
             null,
@@ -310,10 +300,6 @@ export class Adapter extends GObject.Object {
             -1,
             null,
         );
-
-        if (powered) {
-            this.startDiscovery();
-        }
     }
 
     public removeDevice(devicePath: string): void {

@@ -71,6 +71,10 @@ export class Window extends Adw.ApplicationWindow {
             return;
         }
 
+        if (bluetooth.adapter.powered) {
+            bluetooth.adapter.startDiscovery();
+        }
+
         try {
             bluetooth.adapter.bluetoothAgent.register();
         } catch (e) {
@@ -169,6 +173,12 @@ export class Window extends Adw.ApplicationWindow {
 
             try {
                 bluetooth.adapter.setAdapterPower(state);
+
+                // If we're powering on, then start discovery
+                if (state) {
+                    bluetooth.adapter.startDiscovery();
+                }
+
                 return false; // Allow switch to toggle
             } catch (error) {
                 this._showError({
