@@ -6,6 +6,8 @@
  */
 import { exit, programArgs } from "system";
 
+imports.package._findEffectiveEntryPointName = () => 'com.ezratweaver.AdwBluetooth';
+
 /**
  * This block sets up important package information. GJS uses this to load
  * our files correctly. At build time, the `@VARIABLE@` strings will be

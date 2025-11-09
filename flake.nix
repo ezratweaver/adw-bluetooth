@@ -30,11 +30,6 @@
           pkgs.gjs
           pkgs.libadwaita
         ];
-
-        # Change executable to adw-bluetooth on nixos, and then fix the entrypoint
-        preFixup = ''
-          sed -i "1 a imports.package._findEffectiveEntryPointName = () => 'com.ezratweaver.AdwBluetooth';" "$out/bin/adw-bluetooth"
-        '';
       };
 
       # ---- Dev shell ----
