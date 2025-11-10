@@ -168,7 +168,6 @@ export class Device extends GObject.Object {
         this._loadProperties();
         this._setupPropertyChangeListener();
         this._setupBatteryInterface();
-        this._loadBatteryPercentage();
     }
 
     private _loadProperties(): void {
@@ -250,6 +249,52 @@ export class Device extends GObject.Object {
     }
 
     private _setupBatteryInterface(): void {
+        systemBus.signal_subscribe(
+            ORG_BLUEZ,
+            "org.freedesktop.DBus.ObjectManager",
+            "InterfacesAdded",
+            null,
+            null,
+            Gio.DBusSignalFlags.NONE,
+            (_, __, ___, ____, _____, params) => {
+                const [objectPath, interfaces] = params.deep_unpack() as [
+                    string,
+                    Record<string, any>,
+                ];
+                if (
+                    objectPath === this._devicePath &&
+                    BLUEZ_BATTERY_1 in interfaces
+                ) {
+                    this._createBatteryProxy();
+                }
+            },
+        );
+
+        systemBus.signal_subscribe(
+            ORG_BLUEZ,
+            "org.freedesktop.DBus.ObjectManager",
+            "InterfacesRemoved",
+            null,
+            null,
+            Gio.DBusSignalFlags.NONE,
+            (_, __, ___, ____, _____, params) => {
+                const [objectPath, interfaces] = params.deep_unpack() as [
+                    string,
+                    string[],
+                ];
+                if (
+                    objectPath === this._devicePath &&
+                    interfaces.includes(BLUEZ_BATTERY_1)
+                ) {
+                    this._removeBatteryProxy();
+                }
+            },
+        );
+
+        this._createBatteryProxy();
+    }
+
+    private _createBatteryProxy(): void {
         try {
             this.batteryProxy = Gio.DBusProxy.new_sync(
                 systemBus,
@@ -270,30 +315,30 @@ export class Device extends GObject.Object {
                     const newPercentage = percentageChanged.get_byte();
                     if (this._batteryPercentage !== newPercentage) {
                         this._batteryPercentage = newPercentage;
+
                         this.notify("battery-percentage");
-                        this.emit("device-changed");
                     }
                 }
             });
+
+            const percentage = this.batteryProxy
+                .get_cached_property("Percentage")
+                ?.deep_unpack() as number | undefined;
+
+            this._batteryPercentage = percentage;
+
+            this.notify("battery-percentage");
         } catch (e) {
-            log(`Error occured trying to find battery proxy: ${e}`);
-            // Not the end of the world, we won't do anything
             this.batteryProxy = null;
         }
     }
 
-    private _loadBatteryPercentage(): void {
-        if (!this.batteryProxy) {
-            return;
-        }
+    private _removeBatteryProxy(): void {
+        if (this.batteryProxy) {
+            this.batteryProxy = null;
+            this._batteryPercentage = undefined;
 
-        try {
-            const percentage = this.batteryProxy
-                .get_cached_property("Percentage")
-                ?.deep_unpack() as number | undefined;
-            this._batteryPercentage = percentage;
-        } catch (e) {
-            // If we can't read it, oh well
+            this.notify("battery-percentage");
         }
     }
 

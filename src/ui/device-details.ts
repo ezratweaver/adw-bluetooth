@@ -57,12 +57,11 @@ export class DeviceDetailsModal extends Adw.Window {
         this._type_row.set_subtitle(device.deviceType);
         this._address_row.set_subtitle(device.address);
 
-        if (this.device.batteryPercentage) {
-            this._battery_row.set_subtitle(`${this.device.batteryPercentage}%`);
-            this._battery_row.set_visible(true);
-        } else {
-            this._battery_row.set_visible(false);
-        }
+        this.device.connect("notify::battery-percentage", () => {
+            this.updateBatteryDisplay();
+        });
+
+        this.updateBatteryDisplay();
 
         this._device_icon.set_from_icon_name(
             device.icon || "bluetooth-symbolic",
@@ -126,6 +125,15 @@ export class DeviceDetailsModal extends Adw.Window {
         this._forget_button.connect("activated", () => {
             this.confirmForgetDevice();
         });
+    }
+
+    private updateBatteryDisplay(): void {
+        if (this.device.batteryPercentage) {
+            this._battery_row.set_subtitle(`${this.device.batteryPercentage}%`);
+            this._battery_row.set_visible(true);
+        } else {
+            this._battery_row.set_visible(false);
+        }
     }
 
     private async confirmForgetDevice(): Promise<void> {
