@@ -6,6 +6,7 @@
     <file>ui/device-details.js</file>
     <file>ui/pin-confirmation.js</file>
     <file>ui/file-transfer-progress.js</file>
+    <file>ui/shortcuts-window.js</file>
     <file>services/gsettings.js</file>
     <file>services/formatting.js</file>
     <file>services/dialog.js</file>

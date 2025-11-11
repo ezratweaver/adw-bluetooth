@@ -11,6 +11,7 @@ import { displayDialogAsTopLevel } from "../services/dialog.js";
 import { findDeviceByPath } from "../services/find-by-device.js";
 import { IncomingTransferManager } from "../services/ui/incoming-transfer-manager.js";
 import { VimNavigator } from "../services/ui/vim-navigator.js";
+import { ShortcutsWindow } from "./shortcuts-window.js";
 
 export class Window extends Adw.ApplicationWindow {
     private _bluetooth_toggle!: Gtk.Switch;
@@ -118,6 +119,16 @@ export class Window extends Adw.ApplicationWindow {
                 trigger: Gtk.ShortcutTrigger.parse_string("<Shift>g"),
             }),
         );
+
+        // Show shortcuts window
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({
+                    action_name: "win.show-help-overlay",
+                }),
+                trigger: Gtk.ShortcutTrigger.parse_string("<Primary>question"),
+            }),
+        );
     }
 
     constructor(params?: Partial<Adw.ApplicationWindow.ConstructorProps>) {
@@ -195,8 +206,17 @@ export class Window extends Adw.ApplicationWindow {
             this._showAbout();
         });
 
+        const showHelpAction = new Gio.SimpleAction({
+            name: "show-help-overlay",
+        });
+
+        showHelpAction.connect("activate", () => {
+            new ShortcutsWindow(this);
+        });
+
         this.add_action(toggleDiscoveryAction);
         this.add_action(aboutAction);
+        this.add_action(showHelpAction);
     }
 
     private _setupPropertyBindings(): void {
