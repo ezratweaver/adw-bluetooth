@@ -62,7 +62,7 @@ export class Window extends Adw.ApplicationWindow {
             }),
         );
 
-        // Vim-style navigation shortcuts
+        // Vim-style and arrow key navigation shortcuts
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-down" }),
@@ -72,8 +72,22 @@ export class Window extends Adw.ApplicationWindow {
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-down" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("Down"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-up" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("k"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-up" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("Up"),
             }),
         );
 
