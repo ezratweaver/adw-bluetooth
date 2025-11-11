@@ -133,7 +133,7 @@ export class Window extends Adw.ApplicationWindow {
         this._setupDeviceList();
         this._setupActions();
 
-        this._incomingTransferManager = new IncomingTransferManager();
+        this._incomingTransferManager = new IncomingTransferManager(this._showToast.bind(this));
     }
 
     private _showNoAdapterState(): void {

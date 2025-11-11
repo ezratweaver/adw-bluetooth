@@ -9,8 +9,10 @@ import { findDeviceByAddress } from "./find-by-device.js";
 export class IncomingTransferManager {
     private incomingTransfers: Map<string, FileTransferProgressDialog> =
         new Map();
+    private showToast: (message: string) => void;
 
-    constructor() {
+    constructor(showToast: (message: string) => void) {
+        this.showToast = showToast;
         this.setupEventHandlers();
     }
 
@@ -109,10 +111,17 @@ export class IncomingTransferManager {
         dialog.add_response("accept", "_Accept");
 
         dialog.connect("response", (_, response: string) => {
-            if (response === "accept") {
-                bluetooth.obex?.acceptAuthorization(requestId);
-            } else {
-                bluetooth.obex?.rejectAuthorization(requestId);
+            try {
+                if (response === "accept") {
+                    bluetooth.obex?.acceptAuthorization(requestId);
+                } else {
+                    bluetooth.obex?.rejectAuthorization(requestId);
+                }
+            } catch (error) {
+                log(`Failed to handle transfer authorization: ${error}`);
+                if (response === "accept") {
+                    this.showToast("Failed to accept file transfer");
+                }
             }
         });
 
@@ -135,7 +144,11 @@ export class IncomingTransferManager {
         progressDialog.updateProgress(0, 1);
 
         progressDialog.connect("cancelled", () => {
-            bluetooth.obex?.cancelTransfer(transferPath);
+            try {
+                bluetooth.obex?.cancelTransfer(transferPath);
+            } catch (error) {
+                log(`Failed to cancel incoming transfer: ${error}`);
+            }
             this.incomingTransfers.delete(transferPath);
         });
 
