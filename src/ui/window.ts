@@ -241,7 +241,8 @@ export class Window extends Adw.ApplicationWindow {
         // On enabling / disabling bluetooth
         this._bluetooth_toggle.connect("state-set", (_, state) => {
             if (!bluetooth.adapter) {
-                return true; // Prevent switch toggle if no adapter
+                this._bluetooth_toggle.set_active(!state); // Revert switch if no adapter
+                return;
             }
 
             try {
@@ -256,11 +257,9 @@ export class Window extends Adw.ApplicationWindow {
                         this._showToast("Failed to start device discovery");
                     }
                 }
-
-                return false; // Allow switch to toggle
             } catch (error) {
                 this._showToast("Failed to control Bluetooth power");
-                return true; // Prevent switch toggle on error
+                this._bluetooth_toggle.set_active(!state); // Revert switch on error
             }
         });
 

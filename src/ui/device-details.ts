@@ -121,7 +121,6 @@ export class DeviceDetailsModal extends Adw.Window {
                     this._connection_switch.set_active(true);
                 }
             }
-            return false;
         });
 
         this._send_files_button.connect("activated", () => {
