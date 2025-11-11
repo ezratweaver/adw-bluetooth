@@ -22,8 +22,8 @@ A Bluetooth device manager built for tiling window managers like Hyprland and Ni
 
 ### Roadmap
 
+- [x] File transfer capabilities
 - [ ] Multi-adapter support
-- [ ] File transfer capabilities
 - [ ] Rfkill handling
 
 ## Installation
@@ -48,8 +48,15 @@ And in environment.systemPackages add:
 inputs.adw-bluetooth.packages.${system}.default
 ```
 
+### Other (Flatpak)
 
-## Development
+```bash
+flatpak install --user <flatpak-file-name>.flatpak
+```
+
+Download the Flatpak from [releases](https://github.com/ezratweaver/adwaita-bluetooth/releases).
+
+## Dependencies
 
 ### Using Nix (Recommended)
 
@@ -57,6 +64,14 @@ Enter the development environment with all dependencies:
 
 ```bash
 nix develop
+```
+
+### Arch
+
+Install dependencies:
+
+```bash
+sudo pacman -S dconf gjs glib2 gtk4 hicolor-icon-theme libadwaita blueprint-compiler git meson typescript
 ```
 
 ### Build Steps
@@ -67,7 +82,6 @@ nix develop
 nix build
 ```
 
-
 #### Using Meson
 
 ```bash
@@ -76,4 +90,22 @@ meson compile -C builddir
 
 # For running locally
 meson compile -C builddir devel
+```
+
+#### Using Flatpak
+
+```bash
+# Install dependencies
+flatpak install --user flathub org.gnome.Platform//49 org.gnome.Sdk//49
+flatpak install --user flathub org.freedesktop.Sdk.Extension.node20//25.08 org.freedesktop.Sdk.Extension.typescript//25.08
+
+# Build && Install (only in user space)
+flatpak-builder --user --install --force-clean build-dir com.ezratweaver.AdwBluetooth.json
+
+# Run
+flatpak run com.ezratweaver.AdwBluetooth
+
+# Build .flatpak file
+flatpak-builder --repo=repo build-dir com.ezratweaver.AdwBluetooth.json
+flatpak build-bundle repo adw-bluetooth.flatpak com.ezratweaver.AdwBluetooth
 ```
