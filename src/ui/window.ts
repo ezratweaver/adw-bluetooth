@@ -1,17 +1,13 @@
 import Adw from "gi://Adw";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
-import Gdk from "gi://Gdk?version=4.0";
-import { bluetooth, ErrorPopUp } from "../bluetooth/bluetooth.js";
+import { bluetooth } from "../bluetooth/bluetooth.js";
 import { Device } from "../bluetooth/device.js";
 import { DeviceDetailsModal } from "./device-details.js";
 import { PinConfirmationDialog } from "./pin-confirmation.js";
 import Gio from "gi://Gio?version=2.0";
 import { formatPin } from "../services/formatting.js";
-import {
-    showAlertDialog,
-    displayDialogAsTopLevel,
-} from "../services/dialog.js";
+import { displayDialogAsTopLevel } from "../services/dialog.js";
 import { findDeviceByPath } from "../services/find-by-device.js";
 import { IncomingTransferManager } from "../services/incoming-transfer-manager.js";
 
@@ -118,16 +114,18 @@ export class Window extends Adw.ApplicationWindow {
         }
 
         if (bluetooth.adapter.powered) {
-            bluetooth.adapter.startDiscovery();
+            try {
+                bluetooth.adapter.startDiscovery();
+            } catch (error) {
+                log(`Failed to start discovery: ${error}`);
+                this._showToast("Failed to start device discovery");
+            }
         }
 
         try {
             bluetooth.adapter.bluetoothAgent.register();
         } catch (e) {
-            this._showError({
-                title: "Failed to register bluetooth agent",
-                description: "Another bluetooth application may be running.",
-            });
+            this._showToast("Failed to initialize pairing agent");
         }
 
         this._setupPropertyBindings();
@@ -156,10 +154,18 @@ export class Window extends Adw.ApplicationWindow {
         toggleDiscoveryAction.connect("activate", () => {
             if (!bluetooth.adapter) return;
 
-            if (bluetooth.adapter.discovering) {
-                bluetooth.adapter.stopDiscovery();
-            } else {
-                bluetooth.adapter.startDiscovery();
+            try {
+                if (bluetooth.adapter.discovering) {
+                    bluetooth.adapter.stopDiscovery();
+                } else {
+                    bluetooth.adapter.startDiscovery();
+                }
+            } catch (error) {
+                if (bluetooth.adapter.discovering) {
+                    this._showToast("Failed to stop device discovery");
+                } else {
+                    this._showToast("Failed to start device discovery");
+                }
             }
         });
 
@@ -243,15 +249,17 @@ export class Window extends Adw.ApplicationWindow {
 
                 // If we're powering on, then start discovery
                 if (state) {
-                    bluetooth.adapter.startDiscovery();
+                    try {
+                        bluetooth.adapter.startDiscovery();
+                    } catch (error) {
+                        log(`Failed to start discovery on power on: ${error}`);
+                        this._showToast("Failed to start device discovery");
+                    }
                 }
 
                 return false; // Allow switch to toggle
             } catch (error) {
-                this._showError({
-                    title: "Power Control Error",
-                    description: `Failed to set adapter power: ${error}`,
-                });
+                this._showToast("Failed to control Bluetooth power");
                 return true; // Prevent switch toggle on error
             }
         });
@@ -377,13 +385,13 @@ export class Window extends Adw.ApplicationWindow {
         aboutDialog.present(this);
     }
 
-    private _showError = (error: ErrorPopUp) => {
-        showAlertDialog({
-            parent: this,
-            title: error.title,
-            description: error.description,
+    private _showToast(message: string) {
+        const toast = new Adw.Toast({
+            title: message,
+            timeout: 4,
         });
-    };
+        this._toast_overlay.add_toast(toast);
+    }
 
     private _showConfirmationDialog(
         devicePath: string,
@@ -533,7 +541,11 @@ export class Window extends Adw.ApplicationWindow {
         try {
             if (!device.paired) {
                 // Stop discovery while pairing/connecting
-                bluetooth.adapter?.stopDiscovery();
+                try {
+                    bluetooth.adapter?.stopDiscovery();
+                } catch (error) {
+                    log(`Failed to stop discovery: ${error}`);
+                }
                 // Pair first if not paired
                 await device.pairDevice();
                 // After successful pairing, connect automatically
@@ -547,7 +559,11 @@ export class Window extends Adw.ApplicationWindow {
             }
         } catch (error) {
             if (!device.paired || device.connected) {
-                bluetooth.adapter?.startDiscovery();
+                try {
+                    bluetooth.adapter?.startDiscovery();
+                } catch (error) {
+                    log(`Failed to restart discovery: ${error}`);
+                }
             }
 
             const action = !device.paired
@@ -657,10 +673,18 @@ export class Window extends Adw.ApplicationWindow {
                         this._handleDevicePair(device);
                     } else if (device.connected) {
                         // Device connected - disconnect it
-                        device.disconnectDevice();
+                        try {
+                            device.disconnectDevice();
+                        } catch (error) {
+                            log(`Failed to disconnect device: ${error}`);
+                        }
                     } else {
                         // Device paired but not connected - connect it
-                        device.connectDevice();
+                        try {
+                            device.connectDevice();
+                        } catch (error) {
+                            log(`Failed to connect device: ${error}`);
+                        }
                     }
                 }
             } catch (e) {
