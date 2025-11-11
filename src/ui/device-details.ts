@@ -105,6 +105,7 @@ export class DeviceDetailsModal extends Adw.Window {
                 if (bluetooth.adapter?.discovering) {
                     bluetooth.adapter.stopDiscovery();
                 }
+
                 device.connectDevice().catch((error) => {
                     log(
                         `An error occured trying to connect to device: ${error}`,
@@ -113,7 +114,12 @@ export class DeviceDetailsModal extends Adw.Window {
                     device.disconnectDevice(); // Explicity cut connection when timeout/failure occurs
                 });
             } else if (!switchTurnedOn && device.connected) {
-                device.disconnectDevice();
+                try {
+                    device.disconnectDevice();
+                } catch (error) {
+                    log(`Failed to turn off connection: ${error}`);
+                    this._connection_switch.set_active(true);
+                }
             }
             return false;
         });
@@ -146,8 +152,12 @@ export class DeviceDetailsModal extends Adw.Window {
         });
 
         if (confirmed) {
-            bluetooth.adapter?.removeDevice(this.device.devicePath);
-            this.close();
+            try {
+                bluetooth.adapter?.removeDevice(this.device.devicePath);
+                this.close();
+            } catch (error) {
+                log(`Failed to remove device: ${error}`);
+            }
         }
     }
 
@@ -173,7 +183,13 @@ export class DeviceDetailsModal extends Adw.Window {
             return;
         }
 
-        const sessionPath = await obex.createSession(this.device.address);
+        let sessionPath: string | null;
+        try {
+            sessionPath = await obex.createSession(this.device.address);
+        } catch (error) {
+            progressDialog.showError(`Failed to create session: ${error}`);
+            return;
+        }
 
         if (!sessionPath) {
             progressDialog.showError(
@@ -193,7 +209,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
         const cleanupSession = async () => {
             try {
-                await obex.removeSession(sessionPath);
+                await obex.removeSession(sessionPath!);
             } catch (error) {
                 log(`Failed to cleanup session: ${error}`);
             }
@@ -275,7 +291,11 @@ export class DeviceDetailsModal extends Adw.Window {
 
         progressDialog.connect("cancelled", () => {
             if (transferPath) {
-                obex.cancelTransfer(transferPath);
+                try {
+                    obex.cancelTransfer(transferPath);
+                } catch (error) {
+                    log(`Failed to cancel transfer: ${error}`);
+                }
             }
             cleanupSignals();
             cleanupSession();
