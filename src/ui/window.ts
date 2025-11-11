@@ -357,6 +357,8 @@ export class Window extends Adw.ApplicationWindow {
             title: device.alias,
             activatable: true,
         });
+        
+        row.set_can_focus(false);
 
         const statusLabel = new Gtk.Label({
             label: device.connectedStatus,
