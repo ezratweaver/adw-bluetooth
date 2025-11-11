@@ -9,7 +9,8 @@ import Gio from "gi://Gio?version=2.0";
 import { formatPin } from "../services/formatting.js";
 import { displayDialogAsTopLevel } from "../services/dialog.js";
 import { findDeviceByPath } from "../services/find-by-device.js";
-import { IncomingTransferManager } from "../services/incoming-transfer-manager.js";
+import { IncomingTransferManager } from "../services/ui/incoming-transfer-manager.js";
+import { VimNavigator } from "../services/ui/vim-navigator.js";
 
 export class Window extends Adw.ApplicationWindow {
     private _bluetooth_toggle!: Gtk.Switch;
@@ -31,7 +32,7 @@ export class Window extends Adw.ApplicationWindow {
     > = new Map();
 
     private _incomingTransferManager!: IncomingTransferManager;
-    private _vimModeActive: boolean = false;
+    private _vimNavigator!: VimNavigator;
 
     static {
         GObject.registerClass(
@@ -132,8 +133,11 @@ export class Window extends Adw.ApplicationWindow {
         this._setupEventHandlers();
         this._setupDeviceList();
         this._setupActions();
+        this._setupVimNavigation();
 
-        this._incomingTransferManager = new IncomingTransferManager(this._showToast.bind(this));
+        this._incomingTransferManager = new IncomingTransferManager(
+            this._showToast.bind(this),
+        );
     }
 
     private _showNoAdapterState(): void {
@@ -179,27 +183,6 @@ export class Window extends Adw.ApplicationWindow {
 
         this.add_action(toggleDiscoveryAction);
         this.add_action(aboutAction);
-
-        // Vim-style navigation actions
-        const vimDownAction = new Gio.SimpleAction({ name: "vim-down" });
-        vimDownAction.connect("activate", () => this._vimNavigateDown());
-        this.add_action(vimDownAction);
-
-        const vimUpAction = new Gio.SimpleAction({ name: "vim-up" });
-        vimUpAction.connect("activate", () => this._vimNavigateUp());
-        this.add_action(vimUpAction);
-
-        const vimSelectAction = new Gio.SimpleAction({ name: "vim-select" });
-        vimSelectAction.connect("activate", () => this._vimSelectCurrent());
-        this.add_action(vimSelectAction);
-
-        const vimFirstAction = new Gio.SimpleAction({ name: "vim-first" });
-        vimFirstAction.connect("activate", () => this._vimNavigateFirst());
-        this.add_action(vimFirstAction);
-
-        const vimLastAction = new Gio.SimpleAction({ name: "vim-last" });
-        vimLastAction.connect("activate", () => this._vimNavigateLast());
-        this.add_action(vimLastAction);
     }
 
     private _setupPropertyBindings(): void {
@@ -489,13 +472,6 @@ export class Window extends Adw.ApplicationWindow {
             statusLabel,
         });
 
-        // Disable vim mode if mouse hovers over row
-        const motionController = new Gtk.EventControllerMotion();
-        motionController.connect("motion", () => {
-            this._disableVimMode();
-        });
-        row.add_controller(motionController);
-
         row.connect("activated", () => {
             if (!device.connecting) {
                 if (device.paired) {
@@ -595,124 +571,45 @@ export class Window extends Adw.ApplicationWindow {
         }
     }
 
+    private _setupVimNavigation(): void {
+        // Initialize vim navigator
+        this._vimNavigator = new VimNavigator(this._devices_list, {
+            onDevicePair: this._handleDevicePair.bind(this),
+        });
+
+        // Vim-style navigation actions
+        const vimDownAction = new Gio.SimpleAction({ name: "vim-down" });
+        vimDownAction.connect("activate", () =>
+            this._vimNavigator.navigateDown(),
+        );
+        this.add_action(vimDownAction);
+
+        const vimUpAction = new Gio.SimpleAction({ name: "vim-up" });
+        vimUpAction.connect("activate", () => this._vimNavigator.navigateUp());
+        this.add_action(vimUpAction);
+
+        const vimSelectAction = new Gio.SimpleAction({ name: "vim-select" });
+        vimSelectAction.connect("activate", () =>
+            this._vimNavigator.selectCurrent(),
+        );
+        this.add_action(vimSelectAction);
+
+        const vimFirstAction = new Gio.SimpleAction({ name: "vim-first" });
+        vimFirstAction.connect("activate", () =>
+            this._vimNavigator.navigateFirst(),
+        );
+        this.add_action(vimFirstAction);
+
+        const vimLastAction = new Gio.SimpleAction({ name: "vim-last" });
+        vimLastAction.connect("activate", () =>
+            this._vimNavigator.navigateLast(),
+        );
+        this.add_action(vimLastAction);
+    }
+
     vfunc_close_request(): boolean {
         bluetooth.destroy();
         this._incomingTransferManager.destroy();
         return super.vfunc_close_request();
-    }
-
-    // Vim mode management
-    private _enableVimMode(): void {
-        if (!this._vimModeActive) {
-            this._vimModeActive = true;
-            this._devices_list.set_selection_mode(Gtk.SelectionMode.SINGLE);
-        }
-    }
-
-    private _disableVimMode(): void {
-        if (this._vimModeActive) {
-            this._vimModeActive = false;
-            this._devices_list.set_selection_mode(Gtk.SelectionMode.NONE);
-            this._devices_list.unselect_all();
-        }
-    }
-
-    // Vim-style navigation methods
-    private _vimNavigateDown(): void {
-        this._enableVimMode();
-        const selectedRow = this._devices_list.get_selected_row();
-        if (!selectedRow) {
-            // If no row is selected, select the first one
-            const firstRow = this._devices_list.get_row_at_index(0);
-            if (firstRow) {
-                this._devices_list.select_row(firstRow);
-            }
-            return;
-        }
-
-        const currentIndex = selectedRow.get_index();
-        const nextRow = this._devices_list.get_row_at_index(currentIndex + 1);
-        if (nextRow) {
-            this._devices_list.select_row(nextRow);
-        }
-    }
-
-    private _vimNavigateUp(): void {
-        this._enableVimMode();
-        const selectedRow = this._devices_list.get_selected_row();
-        if (!selectedRow) {
-            // If no row is selected, select the first one
-            const firstRow = this._devices_list.get_row_at_index(0);
-            if (firstRow) {
-                this._devices_list.select_row(firstRow);
-            }
-            return;
-        }
-
-        const currentIndex = selectedRow.get_index();
-        if (currentIndex > 0) {
-            const prevRow = this._devices_list.get_row_at_index(
-                currentIndex - 1,
-            );
-            if (prevRow) {
-                this._devices_list.select_row(prevRow);
-            }
-        }
-    }
-
-    private _vimSelectCurrent(): void {
-        this._enableVimMode();
-        const selectedRow = this._devices_list.get_selected_row();
-        if (selectedRow) {
-            try {
-                const device = findDeviceByPath(selectedRow.name);
-                if (device && !device.connecting) {
-                    if (!device.paired) {
-                        // Device not paired - pair it
-                        this._handleDevicePair(device);
-                    } else if (device.connected) {
-                        // Device connected - disconnect it
-                        try {
-                            device.disconnectDevice();
-                        } catch (error) {
-                            log(`Failed to disconnect device: ${error}`);
-                        }
-                    } else {
-                        // Device paired but not connected - connect it
-                        try {
-                            device.connectDevice();
-                        } catch (error) {
-                            log(`Failed to connect device: ${error}`);
-                        }
-                    }
-                }
-            } catch (e) {
-                log(`Error occured interacting with device: ${e}`);
-            }
-        }
-    }
-
-    private _vimNavigateFirst(): void {
-        this._enableVimMode();
-        const firstRow = this._devices_list.get_row_at_index(0);
-        if (firstRow) {
-            this._devices_list.select_row(firstRow);
-        }
-    }
-
-    private _vimNavigateLast(): void {
-        this._enableVimMode();
-        // Get the last row by iterating through all rows
-        let lastRow = null;
-        let index = 0;
-        while (true) {
-            const row = this._devices_list.get_row_at_index(index);
-            if (!row) break;
-            lastRow = row;
-            index++;
-        }
-        if (lastRow) {
-            this._devices_list.select_row(lastRow);
-        }
     }
 }

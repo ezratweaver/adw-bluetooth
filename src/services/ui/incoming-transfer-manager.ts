@@ -1,10 +1,10 @@
 import Adw from "gi://Adw";
-import { bluetooth } from "../bluetooth/bluetooth.js";
-import { FileTransferProgressDialog } from "../ui/file-transfer-progress.js";
-import { formatBytesToHumanReadable } from "./formatting.js";
-import { displayDialogAsTopLevel } from "./dialog.js";
-import { moveFileToDownloads } from "./filesystem.js";
-import { findDeviceByAddress } from "./find-by-device.js";
+import { bluetooth } from "../../bluetooth/bluetooth.js";
+import { FileTransferProgressDialog } from "../../ui/file-transfer-progress.js";
+import { formatBytesToHumanReadable } from "../formatting.js";
+import { displayDialogAsTopLevel } from "../dialog.js";
+import { moveFileToDownloads } from "../filesystem.js";
+import { findDeviceByAddress } from "../find-by-device.js";
 
 export class IncomingTransferManager {
     private incomingTransfers: Map<string, FileTransferProgressDialog> =
