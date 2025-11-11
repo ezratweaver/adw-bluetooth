@@ -17,28 +17,6 @@ export function displayDialogAsTopLevel(dialog: Adw.Dialog): void {
 }
 
 /**
- * Show a generic alert dialog with title and description
- */
-export function showAlertDialog({
-    parent,
-    title,
-    description,
-}: {
-    parent: Gtk.Window;
-    title: string;
-    description: string;
-}): void {
-    const dialog = new Adw.AlertDialog({
-        heading: title,
-        body: description,
-        defaultResponse: "ok",
-    });
-
-    dialog.add_response("ok", "OK");
-    dialog.present(parent);
-}
-
-/**
  * Show a confirmation dialog with custom actions
  */
 export function showDestructiveConfirmationDialog({
