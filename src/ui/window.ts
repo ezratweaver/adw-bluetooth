@@ -120,6 +120,13 @@ export class Window extends Adw.ApplicationWindow {
             }),
         );
 
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.toggle-discovery" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("d"),
+            }),
+        );
+
         // Show shortcuts window
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({

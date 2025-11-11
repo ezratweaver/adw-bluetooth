@@ -25,11 +25,11 @@ export class ShortcutsWindow extends Adw.Dialog {
     private _createContent(): void {
         // Create toolbar view with header
         const toolbarView = new Adw.ToolbarView();
-        
+
         const headerbar = new Adw.HeaderBar({
             title_widget: new Adw.WindowTitle({
-                title: "Keyboard Shortcuts"
-            })
+                title: "Keyboard Shortcuts",
+            }),
         });
         toolbarView.add_top_bar(headerbar);
 
@@ -67,6 +67,10 @@ export class ShortcutsWindow extends Adw.Dialog {
                 {
                     title: "Pair, connect, or disconnect device",
                     accelerator: "Enter, Space",
+                },
+                {
+                    title: "Toggle discovery mode",
+                    accelerator: "d",
                 },
             ]),
         );
