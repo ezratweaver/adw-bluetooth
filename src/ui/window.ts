@@ -261,7 +261,16 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupAdapterSubMenu() {
-        for (const [adapterPath, adapter] of bluetooth.adapters) {
+        // Sort adapters by adapter name (hci0, hci1, etc.)
+        const sortedAdapters = Array.from(bluetooth.adapters.entries()).sort(
+            ([pathA], [pathB]) => {
+                const nameA = pathA.split("/").slice(-1)[0];
+                const nameB = pathB.split("/").slice(-1)[0];
+                return nameA.localeCompare(nameB);
+            },
+        );
+
+        for (const [adapterPath, adapter] of sortedAdapters) {
             const adapterName = adapterPath.split("/").slice(-1)[0];
             const adapterAlias = adapter.alias || adapterName;
             const displayName =
