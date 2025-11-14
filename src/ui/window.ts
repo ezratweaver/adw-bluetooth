@@ -252,9 +252,9 @@ export class Window extends Adw.ApplicationWindow {
             });
 
             adapterAction.connect("activate", (action) => {
-                const currentState = action.get_state()?.get_boolean() || false;
+                const settingAdapterOn = action.get_state()?.get_boolean();
 
-                if (!currentState) {
+                if (settingAdapterOn) {
                     // Uncheck all other adapters
                     for (const otherPath of bluetooth.adapterPaths) {
                         const otherName = otherPath.split("/").slice(-1)[0];
@@ -268,15 +268,16 @@ export class Window extends Adw.ApplicationWindow {
                         }
                     }
 
-                    // Check this adapter
                     action.set_state(new GLib.Variant("b", true));
-                    log(`Switched to adapter: ${adapterPath}`);
+
+                    bluetooth.changeAdapter(adapterPath);
                 }
             });
 
             this.add_action(adapterAction);
 
             const menuItem = new Gio.MenuItem();
+
             menuItem.set_label(adapterName);
             menuItem.set_action_and_target_value(
                 `win.adapter-${adapterName}`,

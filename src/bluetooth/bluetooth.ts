@@ -68,6 +68,21 @@ export class BluetoothManager {
         return adapterPaths;
     }
 
+    public changeAdapter(adapterPath: string) {
+        let newAdapter: Adapter;
+
+        try {
+            newAdapter = new Adapter(adapterPath);
+        } catch (e) {
+            log(`Failed to change adapter: ${e}`);
+            return false;
+        }
+
+        this._adapter = newAdapter;
+
+        return true;
+    }
+
     get adapterPaths(): string[] {
         return this._adaperPathList;
     }
