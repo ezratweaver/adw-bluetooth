@@ -39,7 +39,7 @@ export class BluetoothManager {
         } catch (error) {
             // Silently fail - adapter will be null
         }
-        
+
         try {
             this._obex = new ObexManager();
         } catch (e) {

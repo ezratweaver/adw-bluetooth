@@ -63,6 +63,13 @@ export class Window extends Adw.ApplicationWindow {
             }),
         );
 
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "window.close" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("Escape"),
+            }),
+        );
+
         // Vim-style and arrow key navigation shortcuts
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
@@ -122,7 +129,9 @@ export class Window extends Adw.ApplicationWindow {
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
-                action: new Gtk.NamedAction({ action_name: "win.toggle-discovery" }),
+                action: new Gtk.NamedAction({
+                    action_name: "win.toggle-discovery",
+                }),
                 trigger: Gtk.ShortcutTrigger.parse_string("d"),
             }),
         );
@@ -364,7 +373,7 @@ export class Window extends Adw.ApplicationWindow {
             title: device.alias,
             activatable: true,
         });
-        
+
         row.set_can_focus(false);
 
         const statusLabel = new Gtk.Label({
