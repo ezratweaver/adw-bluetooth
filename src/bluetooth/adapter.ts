@@ -20,6 +20,7 @@ export class Adapter extends GObject.Object {
 
     private _powered: boolean = false;
     private _discovering: boolean = false;
+    private _alias: string = "";
     private _devices: Device[] = [];
     private _limboDevices: Device[] = [];
 
@@ -40,6 +41,13 @@ export class Adapter extends GObject.Object {
                         "Adapter currently discovering devices",
                         GObject.ParamFlags.READABLE,
                         false,
+                    ),
+                    alias: GObject.ParamSpec.string(
+                        "alias",
+                        "Alias",
+                        "Adapter alias/name",
+                        GObject.ParamFlags.READABLE,
+                        "",
                     ),
                 },
                 Signals: {
@@ -84,6 +92,9 @@ export class Adapter extends GObject.Object {
             this.adapterProxy.get_cached_property("Discovering");
 
         this._setDiscoveringState(discovering?.deep_unpack() as boolean);
+
+        const alias = this.adapterProxy.get_cached_property("Alias");
+        this._setAlias((alias?.deep_unpack() as string) || "");
     }
 
     private _setupPropertyChangeListener(): void {
@@ -101,6 +112,12 @@ export class Adapter extends GObject.Object {
                 this._setDiscoveringState(
                     discoveringValueChanged.get_boolean(),
                 );
+            }
+
+            const aliasValueChanged = changed.lookup_value("Alias", null);
+            if (aliasValueChanged) {
+                const [alias] = aliasValueChanged.get_string();
+                this._setAlias(alias);
             }
         });
     }
@@ -271,6 +288,12 @@ export class Adapter extends GObject.Object {
         this.notify("powered");
     }
 
+    private _setAlias(alias: string): void {
+        if (this._alias === alias) return;
+        this._alias = alias;
+        this.notify("alias");
+    }
+
     public startDiscovery() {
         this.adapterProxy.call_sync(
             "StartDiscovery",
@@ -343,6 +366,10 @@ export class Adapter extends GObject.Object {
 
     get discovering(): boolean {
         return this._discovering;
+    }
+
+    get alias(): string {
+        return this._alias;
     }
 
     get devices(): Device[] {
