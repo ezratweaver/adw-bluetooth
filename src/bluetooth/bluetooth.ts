@@ -78,6 +78,8 @@ export class BluetoothManager {
             return false;
         }
 
+        this._adapter?.destroy();
+
         this._adapter = newAdapter;
 
         return true;

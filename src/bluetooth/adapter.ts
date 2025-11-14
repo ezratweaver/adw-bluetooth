@@ -335,7 +335,7 @@ export class Adapter extends GObject.Object {
         return this.agent;
     }
 
-    func_dispose() {
+    public destroy() {
         if (this.discovering) {
             this.stopDiscovery();
         }
@@ -348,7 +348,5 @@ export class Adapter extends GObject.Object {
                 device.disconnectDevice();
             }
         }
-
-        super.vfunc_dispose();
     }
 }

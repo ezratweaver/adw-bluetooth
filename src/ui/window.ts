@@ -153,12 +153,24 @@ export class Window extends Adw.ApplicationWindow {
     constructor(params?: Partial<Adw.ApplicationWindow.ConstructorProps>) {
         super(params);
 
+        this._setupActions();
+        this._setupVimNavigation();
+        this._setupAdapterSubMenu();
+
+        this._incomingTransferManager = new IncomingTransferManager(
+            this._showToast.bind(this),
+        );
+
+        this._setupWindowState();
+    }
+
+    private _setupWindowState(): void {
         if (!bluetooth.adapter) {
             this._showNoAdapterState();
             return;
         }
 
-        if (bluetooth.adapter.powered) {
+        if (bluetooth.adapter.powered && !bluetooth.adapter.discovering) {
             try {
                 bluetooth.adapter.startDiscovery();
             } catch (error) {
@@ -170,19 +182,28 @@ export class Window extends Adw.ApplicationWindow {
         try {
             bluetooth.adapter.bluetoothAgent.register();
         } catch (e) {
+            log(`Failed to initialize bluetooth agent: ${e}`);
             this._showToast("Failed to initialize pairing agent");
         }
 
         this._setupPropertyBindings();
         this._setupEventHandlers();
         this._setupDeviceList();
-        this._setupActions();
-        this._setupVimNavigation();
-        this._setupAdapterSubMenu();
+    }
 
-        this._incomingTransferManager = new IncomingTransferManager(
-            this._showToast.bind(this),
-        );
+    private _clearDeviceList(): void {
+        this._deviceElements.forEach((elements) => {
+            const parent = elements.row.get_parent();
+            if (parent === this._devices_list) {
+                this._devices_list.remove(elements.row);
+            }
+        });
+        this._deviceElements.clear();
+    }
+
+    private _resetWindow(): void {
+        this._clearDeviceList();
+        this._setupWindowState();
     }
 
     private _showNoAdapterState(): void {
@@ -252,7 +273,7 @@ export class Window extends Adw.ApplicationWindow {
             });
 
             adapterAction.connect("activate", (action) => {
-                const settingAdapterOn = action.get_state()?.get_boolean();
+                const settingAdapterOn = !action.get_state()?.get_boolean();
 
                 if (settingAdapterOn) {
                     // Uncheck all other adapters
@@ -271,6 +292,7 @@ export class Window extends Adw.ApplicationWindow {
                     action.set_state(new GLib.Variant("b", true));
 
                     bluetooth.changeAdapter(adapterPath);
+                    this._resetWindow();
                 }
             });
 
