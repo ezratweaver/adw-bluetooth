@@ -279,6 +279,8 @@ export class Adapter extends GObject.Object {
             -1,
             null,
         );
+
+        this.setDiscoverable(true);
     }
 
     public stopDiscovery() {
@@ -289,6 +291,8 @@ export class Adapter extends GObject.Object {
             -1,
             null,
         );
+
+        this.setDiscoverable(false);
     }
 
     public setAdapterPower(powered: boolean): void {
@@ -298,6 +302,20 @@ export class Adapter extends GObject.Object {
                 BLUEZ_ADAPTER_1,
                 "Powered",
                 new GLib.Variant("b", powered),
+            ]),
+            Gio.DBusCallFlags.NONE,
+            -1,
+            null,
+        );
+    }
+
+    public setDiscoverable(discoverable: boolean): void {
+        this.adapterProxy.call_sync(
+            DBUS_PROPERTIES_SET,
+            new GLib.Variant("(ssv)", [
+                BLUEZ_ADAPTER_1,
+                "Discoverable",
+                new GLib.Variant("b", discoverable),
             ]),
             Gio.DBusCallFlags.NONE,
             -1,
