@@ -5,6 +5,7 @@ import {
     getLastUsedAdapter,
     setLastUsedAdapter,
 } from "../services/gsettings.js";
+import GLib from "gi://GLib?version=2.0";
 
 export const ORG_BLUEZ = "org.bluez";
 export const DBUS_OBJECT_MANAGER = "org.freedesktop.DBus.ObjectManager";
@@ -19,9 +20,8 @@ export interface ErrorPopUp {
 }
 
 export class BluetoothManager {
-    private _adaperPathList: string[] = [];
-    private _adapters: Map<string, Adapter> = new Map();
-    private _adapter: Adapter | null = null;
+    private _adapterAliases: Map<string, string> = new Map();
+    private _activeAdapter: Adapter | null = null;
     private _obex: ObexManager | null = null;
 
     constructor() {
@@ -30,30 +30,20 @@ export class BluetoothManager {
 
     private _initialize(): void {
         try {
-            this._adaperPathList = this._getAdaptersAndDevices();
+            const adaperPathList = this._getAdaptersAndDevices();
 
-            for (const adapterPath of this._adaperPathList) {
-                try {
-                    const adapter = new Adapter(adapterPath);
-                    this._adapters.set(adapterPath, adapter);
-                } catch (e) {
-                    log(
-                        `Error occurred while initializing Adapter ${adapterPath}: ${e}`,
-                    );
-                }
-            }
+            this._loadAdapterAliases(adaperPathList);
 
             // Set adapter to last used, or first available if none saved
             const lastUsedPath = getLastUsedAdapter();
-            if (lastUsedPath && this._adapters.has(lastUsedPath)) {
-                this._adapter = this._adapters.get(lastUsedPath)!;
-            } else {
-                const firstAdapterEntry = this._adapters.entries().next();
-                if (!firstAdapterEntry.done) {
-                    this._adapter = firstAdapterEntry.value[1];
-                }
+
+            if (lastUsedPath && adaperPathList.includes(lastUsedPath)) {
+                this._activeAdapter = new Adapter(lastUsedPath);
+            } else if (adaperPathList.length > 0) {
+                this._activeAdapter = new Adapter(adaperPathList[0]);
             }
         } catch (error) {
+            log(`An error occured trying to initialize an adapter: ${error}`);
             // Silently fail - adapter will be null
         }
 
@@ -85,29 +75,64 @@ export class BluetoothManager {
         return adapterPaths;
     }
 
-    public changeAdapter(adapterPath: string) {
-        const newAdapter = this._adapters.get(adapterPath);
+    private _loadAdapterAliases(adapterPathList: string[]): void {
+        for (const adapterPath of adapterPathList) {
+            try {
+                const result = systemBus.call_sync(
+                    ORG_BLUEZ,
+                    adapterPath,
+                    "org.freedesktop.DBus.Properties",
+                    "Get",
+                    new GLib.Variant("(ss)", [BLUEZ_ADAPTER_1, "Alias"]),
+                    new GLib.VariantType("(v)"),
+                    Gio.DBusCallFlags.NONE,
+                    -1,
+                    null,
+                );
 
-        if (!newAdapter) {
+                const [alias] = result
+                    .get_child_value(0)
+                    .get_variant()
+                    .get_string();
+
+                this._adapterAliases.set(
+                    adapterPath,
+                    alias || adapterPath.split("/").slice(-1)[0],
+                );
+            } catch (e) {
+                // Fallback to adapter name if we can't get alias
+                const adapterName = adapterPath.split("/").slice(-1)[0];
+                this._adapterAliases.set(adapterPath, adapterName);
+            }
+        }
+    }
+
+    public changeAdapter(adapterPath: string) {
+        if (!this.adapterAliases.has(adapterPath)) {
             log(`Adapter not found: ${adapterPath}`);
             return false;
         }
 
-        this._adapter?.destroy();
-        this._adapter = newAdapter;
+        try {
+            this._activeAdapter?.destroy();
+            this._activeAdapter = new Adapter(adapterPath);
 
-        // Save the selected adapter for next time
-        setLastUsedAdapter(adapterPath);
+            // Save the selected adapter for next time
+            setLastUsedAdapter(adapterPath);
 
-        return true;
+            return true;
+        } catch (e) {
+            log(`Error creating adapter ${adapterPath}: ${e}`);
+            return false;
+        }
     }
 
-    get adapters(): Map<string, Adapter> {
-        return this._adapters;
+    get adapterAliases(): Map<string, string> {
+        return this._adapterAliases;
     }
 
     get adapter(): Adapter | null {
-        return this._adapter;
+        return this._activeAdapter;
     }
 
     get obex(): ObexManager | null {
@@ -115,7 +140,7 @@ export class BluetoothManager {
     }
 
     public destroy(): void {
-        this._adapter = null;
+        this._activeAdapter = null;
         if (this._obex) {
             this._obex.destroy();
             this._obex = null;

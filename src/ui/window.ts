@@ -262,17 +262,20 @@ export class Window extends Adw.ApplicationWindow {
 
     private _setupAdapterSubMenu() {
         // Sort adapters by adapter name (hci0, hci1, etc.)
-        const sortedAdapters = Array.from(bluetooth.adapters.entries()).sort(
-            ([pathA], [pathB]) => {
-                const nameA = pathA.split("/").slice(-1)[0];
-                const nameB = pathB.split("/").slice(-1)[0];
-                return nameA.localeCompare(nameB);
-            },
-        );
+        const sortedAdapterPaths = Array.from(
+            bluetooth.adapterAliases.keys(),
+        ).sort((pathA, pathB) => {
+            const nameA = pathA.split("/").slice(-1)[0];
+            const nameB = pathB.split("/").slice(-1)[0];
+            return nameA.localeCompare(nameB);
+        });
 
-        for (const [adapterPath, adapter] of sortedAdapters) {
+        for (const adapterPath of sortedAdapterPaths) {
             const adapterName = adapterPath.split("/").slice(-1)[0];
-            const adapterAlias = adapter.alias || adapterName;
+
+            const adapterAlias =
+                bluetooth.adapterAliases.get(adapterPath) || adapterName;
+
             const displayName =
                 adapterAlias !== adapterName
                     ? `${adapterAlias} (${adapterName})`
@@ -291,7 +294,7 @@ export class Window extends Adw.ApplicationWindow {
 
                 if (settingAdapterOn) {
                     // Uncheck all other adapters
-                    for (const otherPath of bluetooth.adapters.keys()) {
+                    for (const otherPath of bluetooth.adapterAliases.keys()) {
                         const otherName = otherPath.split("/").slice(-1)[0];
 
                         const otherAction = this.lookup_action(
@@ -371,7 +374,7 @@ export class Window extends Adw.ApplicationWindow {
                 bluetooth.adapter.setAdapterPower(state);
 
                 // If we're powering on, then start discovery
-                if (state) {
+                if (state && !bluetooth.adapter.discovering) {
                     try {
                         bluetooth.adapter.startDiscovery();
                     } catch (error) {
