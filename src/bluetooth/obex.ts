@@ -289,15 +289,15 @@ export class ObexManager extends GObject.Object {
             throw new Error("Failed to lookup OBEX Agent interface");
         }
 
-        this.registrationId = sessionBus.register_object(
-            this.agentPath,
-            agentInterface,
-            this._handleAgentMethodCall.bind(this),
-            null,
-            null,
-        );
-
         try {
+            this.registrationId = sessionBus.register_object(
+                this.agentPath,
+                agentInterface,
+                this._handleAgentMethodCall.bind(this),
+                null,
+                null,
+            );
+
             sessionBus.call_sync(
                 ORG_BLUEZ_OBEX,
                 "/org/bluez/obex",
@@ -314,7 +314,7 @@ export class ObexManager extends GObject.Object {
                 sessionBus.unregister_object(this.registrationId);
                 this.registrationId = null;
             }
-            throw new Error(`Failed to register OBEX agent: ${error}`);
+            throw new Error(`${error}`);
         }
     }
 
