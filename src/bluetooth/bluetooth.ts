@@ -16,6 +16,7 @@ export interface ErrorPopUp {
 
 export class BluetoothManager {
     private _adaperPathList: string[] = [];
+    private _adapters: Map<string, Adapter> = new Map();
     private _adapter: Adapter | null = null;
     private _obex: ObexManager | null = null;
 
@@ -27,14 +28,22 @@ export class BluetoothManager {
         try {
             this._adaperPathList = this._getAdaptersAndDevices();
 
-            const firstAdapter = this._adaperPathList[0];
-
-            if (firstAdapter) {
+            for (const adapterPath of this._adaperPathList) {
                 try {
-                    this._adapter = new Adapter(firstAdapter);
+                    const adapter = new Adapter(adapterPath);
+                    this._adapters.set(adapterPath, adapter);
                 } catch (e) {
-                    log(`Error occured while initializing Adapter: ${e}`);
+                    log(
+                        `Error occurred while initializing Adapter ${adapterPath}: ${e}`,
+                    );
                 }
+            }
+
+            // Set the first successfully initialized adapter as the current one
+            // TODO: Look for the last used adapter first instead
+            const firstAdapterEntry = this._adapters.entries().next();
+            if (!firstAdapterEntry.done) {
+                this._adapter = firstAdapterEntry.value[1];
             }
         } catch (error) {
             // Silently fail - adapter will be null
@@ -69,24 +78,20 @@ export class BluetoothManager {
     }
 
     public changeAdapter(adapterPath: string) {
-        let newAdapter: Adapter;
+        const newAdapter = this._adapters.get(adapterPath);
 
-        try {
-            newAdapter = new Adapter(adapterPath);
-        } catch (e) {
-            log(`Failed to change adapter: ${e}`);
+        if (!newAdapter) {
+            log(`Adapter not found: ${adapterPath}`);
             return false;
         }
 
         this._adapter?.destroy();
-
         this._adapter = newAdapter;
-
         return true;
     }
 
-    get adapterPaths(): string[] {
-        return this._adaperPathList;
+    get adapters(): Map<string, Adapter> {
+        return this._adapters;
     }
 
     get adapter(): Adapter | null {

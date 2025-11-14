@@ -261,8 +261,13 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupAdapterSubMenu() {
-        for (const adapterPath of bluetooth.adapterPaths) {
+        for (const [adapterPath, adapter] of bluetooth.adapters) {
             const adapterName = adapterPath.split("/").slice(-1)[0];
+            const adapterAlias = adapter.alias || adapterName;
+            const displayName =
+                adapterAlias !== adapterName
+                    ? `${adapterAlias} (${adapterName})`
+                    : adapterAlias;
 
             const isCurrentAdapter =
                 adapterPath === bluetooth.adapter?.adapterPath;
@@ -277,7 +282,7 @@ export class Window extends Adw.ApplicationWindow {
 
                 if (settingAdapterOn) {
                     // Uncheck all other adapters
-                    for (const otherPath of bluetooth.adapterPaths) {
+                    for (const otherPath of bluetooth.adapters.keys()) {
                         const otherName = otherPath.split("/").slice(-1)[0];
 
                         const otherAction = this.lookup_action(
@@ -300,7 +305,7 @@ export class Window extends Adw.ApplicationWindow {
 
             const menuItem = new Gio.MenuItem();
 
-            menuItem.set_label(adapterName);
+            menuItem.set_label(displayName);
             menuItem.set_action_and_target_value(
                 `win.adapter-${adapterName}`,
                 null,
