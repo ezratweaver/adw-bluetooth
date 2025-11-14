@@ -408,6 +408,14 @@ export class Window extends Adw.ApplicationWindow {
     private _setupDeviceList(): void {
         if (!bluetooth.adapter) return;
 
+        const placeholder = new Adw.StatusPage({
+            icon_name: "bluetooth-active-symbolic",
+            title: "No Devices Found",
+            description: "Nearby devices will show up here",
+            css_classes: ["compact", "view_bg_color"],
+        });
+        this._devices_list.set_placeholder(placeholder);
+
         /*
          * Sorts devices by priority as:
          *

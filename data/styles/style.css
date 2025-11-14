@@ -6,6 +6,10 @@ toolbarview {
   background: @view_bg_color;
 }
 
+.view_bg_color {
+  background: @view_bg_color;
+}
+
 .file-transfer-header {
   background: @window_bg_color;
 }
