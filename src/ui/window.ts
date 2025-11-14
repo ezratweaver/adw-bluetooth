@@ -156,15 +156,15 @@ export class Window extends Adw.ApplicationWindow {
         this._setupActions();
         this._setupVimNavigation();
         this._setupAdapterSubMenu();
+        this._setupAdapterBindings();
+        this._setupButtonEvents();
 
         this._incomingTransferManager = new IncomingTransferManager(
             this._showToast.bind(this),
         );
-
-        this._setupWindowState();
     }
 
-    private _setupWindowState(): void {
+    private _setupAdapterBindings(): void {
         if (!bluetooth.adapter) {
             this._showNoAdapterState();
             return;
@@ -203,7 +203,7 @@ export class Window extends Adw.ApplicationWindow {
 
     private _resetWindow(): void {
         this._clearDeviceList();
-        this._setupWindowState();
+        this._setupAdapterBindings();
     }
 
     private _showNoAdapterState(): void {
@@ -360,7 +360,7 @@ export class Window extends Adw.ApplicationWindow {
         );
     }
 
-    private _setupEventHandlers(): void {
+    private _setupButtonEvents(): void {
         if (!bluetooth.adapter) return;
 
         // On enabling / disabling bluetooth
@@ -387,6 +387,10 @@ export class Window extends Adw.ApplicationWindow {
                 this._bluetooth_toggle.set_active(!state); // Revert switch on error
             }
         });
+    }
+
+    private _setupEventHandlers(): void {
+        if (!bluetooth.adapter) return;
 
         // Adapter listeners
         bluetooth.adapter.connect("device-added", (_, devicePath: string) =>
