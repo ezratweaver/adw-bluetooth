@@ -13,7 +13,7 @@ template $Gjs_Window: Adw.ApplicationWindow {
         MenuButton menu-button {
           icon-name: "open-menu-symbolic";
           tooltip-text: _("Main Menu");
-          menu-model: main_menu;
+          menu-model: main-menu;
           primary: true;
         }
 
@@ -102,12 +102,15 @@ SizeGroup {
   mode: horizontal;
 }
 
-menu main_menu {
+menu main-menu {
   section {
+    submenu adapter-list {
+      label: _("Adapters");
+    }
+
     item {
       label: _("Toggle Discovery");
       action: "win.toggle-discovery";
-      icon-name: "bluetooth-active-symbolic";
     }
   }
 
@@ -115,13 +118,11 @@ menu main_menu {
     item {
       label: _("Keyboard Shortcuts");
       action: "win.show-help-overlay";
-      icon-name: "preferences-desktop-keyboard-shortcuts-symbolic";
     }
 
     item {
       label: _("About");
       action: "win.about";
-      icon-name: "help-about-symbolic";
     }
   }
 }

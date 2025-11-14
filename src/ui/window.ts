@@ -12,6 +12,7 @@ import { findDeviceByPath } from "../services/find-by-device.js";
 import { IncomingTransferManager } from "../services/ui/incoming-transfer-manager.js";
 import { VimNavigator } from "../services/ui/vim-navigator.js";
 import { ShortcutsWindow } from "./shortcuts-window.js";
+import GLib from "gi://GLib?version=2.0";
 
 export class Window extends Adw.ApplicationWindow {
     private _bluetooth_toggle!: Gtk.Switch;
@@ -22,6 +23,7 @@ export class Window extends Adw.ApplicationWindow {
     private _devices_list!: Gtk.ListBox;
     private _discovering_spinner!: Adw.Spinner;
     private _toast_overlay!: Adw.ToastOverlay;
+    private _adapter_list!: Gio.Menu;
 
     private _deviceElements: Map<
         string,
@@ -50,6 +52,7 @@ export class Window extends Adw.ApplicationWindow {
                     "enabled-state",
                     "devices-list",
                     "discovering-spinner",
+                    "adapter-list",
                 ],
             },
             this,
@@ -175,6 +178,7 @@ export class Window extends Adw.ApplicationWindow {
         this._setupDeviceList();
         this._setupActions();
         this._setupVimNavigation();
+        this._setupAdapterSubMenu();
 
         this._incomingTransferManager = new IncomingTransferManager(
             this._showToast.bind(this),
@@ -233,6 +237,54 @@ export class Window extends Adw.ApplicationWindow {
         this.add_action(toggleDiscoveryAction);
         this.add_action(aboutAction);
         this.add_action(showHelpAction);
+    }
+
+    private _setupAdapterSubMenu() {
+        for (const adapterPath of bluetooth.adapterPaths) {
+            const adapterName = adapterPath.split("/").slice(-1)[0];
+
+            const isCurrentAdapter =
+                adapterPath === bluetooth.adapter?.adapterPath;
+
+            const adapterAction = new Gio.SimpleAction({
+                name: `adapter-${adapterName}`,
+                state: new GLib.Variant("b", isCurrentAdapter),
+            });
+
+            adapterAction.connect("activate", (action) => {
+                const currentState = action.get_state()?.get_boolean() || false;
+
+                if (!currentState) {
+                    // Uncheck all other adapters
+                    for (const otherPath of bluetooth.adapterPaths) {
+                        const otherName = otherPath.split("/").slice(-1)[0];
+
+                        const otherAction = this.lookup_action(
+                            `adapter-${otherName}`,
+                        ) as Gio.SimpleAction;
+
+                        if (otherAction && otherPath !== adapterPath) {
+                            otherAction.set_state(new GLib.Variant("b", false));
+                        }
+                    }
+
+                    // Check this adapter
+                    action.set_state(new GLib.Variant("b", true));
+                    log(`Switched to adapter: ${adapterPath}`);
+                }
+            });
+
+            this.add_action(adapterAction);
+
+            const menuItem = new Gio.MenuItem();
+            menuItem.set_label(adapterName);
+            menuItem.set_action_and_target_value(
+                `win.adapter-${adapterName}`,
+                null,
+            );
+
+            this._adapter_list.append_item(menuItem);
+        }
     }
 
     private _setupPropertyBindings(): void {

@@ -13,7 +13,7 @@ import { BluetoothAgent } from "./agent.js";
 export const BLUEZ_ADAPTER_1 = "org.bluez.Adapter1";
 
 export class Adapter extends GObject.Object {
-    private adapterPath: string;
+    private _adapterPath: string;
     private devicePaths: string[] = [];
     private adapterProxy: Gio.DBusProxy;
     private agent: BluetoothAgent;
@@ -57,14 +57,14 @@ export class Adapter extends GObject.Object {
 
     constructor(adapterPath: string) {
         super();
-        this.adapterPath = adapterPath;
+        this._adapterPath = adapterPath;
 
         this.adapterProxy = Gio.DBusProxy.new_sync(
             systemBus,
             Gio.DBusProxyFlags.NONE,
             null,
             ORG_BLUEZ,
-            this.adapterPath,
+            this._adapterPath,
             BLUEZ_ADAPTER_1,
             null,
         );
@@ -120,7 +120,7 @@ export class Adapter extends GObject.Object {
                 ];
 
                 if (
-                    path.includes(this.adapterPath) &&
+                    path.includes(this._adapterPath) &&
                     interfaces[BLUEZ_DEVICE_1]
                 ) {
                     log(`New device discovered ${path}`);
@@ -179,7 +179,7 @@ export class Adapter extends GObject.Object {
                 ];
 
                 if (
-                    path.includes(this.adapterPath) &&
+                    path.includes(this._adapterPath) &&
                     interfaces.includes(BLUEZ_DEVICE_1)
                 ) {
                     log(`Device getting removed ${path}`);
@@ -230,7 +230,10 @@ export class Adapter extends GObject.Object {
         ];
 
         for (const [path, interfaces] of Object.entries(objects)) {
-            if (path.includes(this.adapterPath) && interfaces[BLUEZ_DEVICE_1]) {
+            if (
+                path.includes(this._adapterPath) &&
+                interfaces[BLUEZ_DEVICE_1]
+            ) {
                 this.devicePaths.push(path);
 
                 let device: Device;
@@ -310,6 +313,10 @@ export class Adapter extends GObject.Object {
             -1,
             null,
         );
+    }
+
+    get adapterPath(): string {
+        return this._adapterPath;
     }
 
     get powered(): boolean {

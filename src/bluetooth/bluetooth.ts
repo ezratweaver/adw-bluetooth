@@ -15,6 +15,7 @@ export interface ErrorPopUp {
 }
 
 export class BluetoothManager {
+    private _adaperPathList: string[] = [];
     private _adapter: Adapter | null = null;
     private _obex: ObexManager | null = null;
 
@@ -24,10 +25,9 @@ export class BluetoothManager {
 
     private _initialize(): void {
         try {
-            const adapterPaths = this._getAdaptersAndDevices();
+            this._adaperPathList = this._getAdaptersAndDevices();
 
-            // TODO: Allow user to pick between adapters
-            const firstAdapter = adapterPaths[0];
+            const firstAdapter = this._adaperPathList[0];
 
             if (firstAdapter) {
                 try {
@@ -66,6 +66,10 @@ export class BluetoothManager {
         }
 
         return adapterPaths;
+    }
+
+    get adapterPaths(): string[] {
+        return this._adaperPathList;
     }
 
     get adapter(): Adapter | null {
