@@ -153,9 +153,8 @@ export class Window extends Adw.ApplicationWindow {
     constructor(params?: Partial<Adw.ApplicationWindow.ConstructorProps>) {
         super(params);
 
-        this._setupActions();
+        this._setupMenuActions();
         this._setupVimNavigation();
-        this._setupAdapterSubMenu();
         this._setupAdapterBindings();
         this._setupButtonEvents();
 
@@ -216,7 +215,7 @@ export class Window extends Adw.ApplicationWindow {
         this._bluetooth_toggle.set_visible(false);
     }
 
-    private _setupActions(): void {
+    private _setupMenuActions(): void {
         const toggleDiscoveryAction = new Gio.SimpleAction({
             name: "toggle-discovery",
         });
@@ -258,6 +257,8 @@ export class Window extends Adw.ApplicationWindow {
         this.add_action(toggleDiscoveryAction);
         this.add_action(aboutAction);
         this.add_action(showHelpAction);
+
+        this._setupAdapterSubMenu();
     }
 
     private _setupAdapterSubMenu() {
