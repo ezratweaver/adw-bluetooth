@@ -1,6 +1,10 @@
 import Gio from "gi://Gio";
 import { Adapter, BLUEZ_ADAPTER_1 } from "./adapter.js";
 import { ObexManager } from "./obex.js";
+import {
+    getLastUsedAdapter,
+    setLastUsedAdapter,
+} from "../services/gsettings.js";
 
 export const ORG_BLUEZ = "org.bluez";
 export const DBUS_OBJECT_MANAGER = "org.freedesktop.DBus.ObjectManager";
@@ -39,11 +43,15 @@ export class BluetoothManager {
                 }
             }
 
-            // Set the first successfully initialized adapter as the current one
-            // TODO: Look for the last used adapter first instead
-            const firstAdapterEntry = this._adapters.entries().next();
-            if (!firstAdapterEntry.done) {
-                this._adapter = firstAdapterEntry.value[1];
+            // Set adapter to last used, or first available if none saved
+            const lastUsedPath = getLastUsedAdapter();
+            if (lastUsedPath && this._adapters.has(lastUsedPath)) {
+                this._adapter = this._adapters.get(lastUsedPath)!;
+            } else {
+                const firstAdapterEntry = this._adapters.entries().next();
+                if (!firstAdapterEntry.done) {
+                    this._adapter = firstAdapterEntry.value[1];
+                }
             }
         } catch (error) {
             // Silently fail - adapter will be null
@@ -87,6 +95,10 @@ export class BluetoothManager {
 
         this._adapter?.destroy();
         this._adapter = newAdapter;
+
+        // Save the selected adapter for next time
+        setLastUsedAdapter(adapterPath);
+
         return true;
     }
 

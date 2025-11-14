@@ -33,3 +33,12 @@ export function getDeviceConnectionCount(devicePath: string): number {
 
     return deviceHistory[devicePath] ?? 0;
 }
+
+export function setLastUsedAdapter(adapterPath: string): void {
+    settings.set_string("last-used-adapter", adapterPath);
+}
+
+export function getLastUsedAdapter(): string | null {
+    const lastAdapter = settings.get_string("last-used-adapter");
+    return lastAdapter || null;
+}
