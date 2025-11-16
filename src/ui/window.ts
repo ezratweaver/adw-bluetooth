@@ -435,8 +435,8 @@ export class Window extends Adw.ApplicationWindow {
             halign: Gtk.Align.CENTER,
             valign: Gtk.Align.CENTER,
             spacing: 12,
-            marginTop: 40,
-            marginBottom: 40,
+            marginTop: 100,
+            marginBottom: 100,
         });
 
         const placeholderIcon = new Gtk.Image({
