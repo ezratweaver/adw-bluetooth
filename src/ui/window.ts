@@ -185,6 +185,9 @@ export class Window extends Adw.ApplicationWindow {
             this._showToast("Failed to initialize pairing agent");
         }
 
+        this._disabled_state.set_visible(!bluetooth.adapter.powered);
+        this._enabled_state.set_visible(bluetooth.adapter.powered);
+
         this._setupPropertyBindings();
         this._setupEventHandlers();
         this._setupDeviceList();
@@ -339,21 +342,6 @@ export class Window extends Adw.ApplicationWindow {
         );
 
         bluetooth.adapter.bind_property(
-            "powered",
-            this._disabled_state,
-            "visible",
-            GObject.BindingFlags.SYNC_CREATE |
-                GObject.BindingFlags.INVERT_BOOLEAN
-        );
-
-        bluetooth.adapter.bind_property(
-            "powered",
-            this._enabled_state,
-            "visible",
-            GObject.BindingFlags.SYNC_CREATE
-        );
-
-        bluetooth.adapter.bind_property(
             "discovering",
             this._discovering_spinner,
             "visible",
@@ -370,6 +358,10 @@ export class Window extends Adw.ApplicationWindow {
                 this._bluetooth_toggle.set_active(!state); // Revert switch if no adapter
                 return;
             }
+
+            // Update UI state immediately
+            this._disabled_state.set_visible(!state);
+            this._enabled_state.set_visible(state);
 
             bluetooth.adapter
                 .setAdapterPower(state)
@@ -390,6 +382,10 @@ export class Window extends Adw.ApplicationWindow {
                     log(`Error occurred setting adapter power: ${error}`);
                     this._showToast("Failed to control Bluetooth power");
                     this._bluetooth_toggle.set_active(!state); // Revert switch on error
+
+                    // Revert UI state on error
+                    this._disabled_state.set_visible(state);
+                    this._enabled_state.set_visible(!state);
                 });
         });
     }
