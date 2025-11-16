@@ -244,12 +244,12 @@ export class BluetoothAgent extends GObject.Object {
         }
     }
 
-    public cancelConfirmation(requestId: string): void {
+    public cancelPairing(requestId: string): void {
         const invocation = this.pendingRequests.get(requestId);
         if (invocation) {
             invocation.return_dbus_error(
-                "org.bluez.Error.Canceled",
-                "Pairing confirmation canceled by user"
+                "org.bluez.Error.Rejected",
+                "Pairing confirmation was rejected by user"
             );
             this.pendingRequests.delete(requestId);
         }

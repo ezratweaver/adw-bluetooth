@@ -545,7 +545,7 @@ export class Window extends Adw.ApplicationWindow {
         });
 
         dialog.connect("cancelled", () => {
-            bluetooth.adapter?.bluetoothAgent.cancelConfirmation(requestId);
+            bluetooth.adapter?.bluetoothAgent.cancelPairing(requestId);
         });
 
         displayDialogAsTopLevel(dialog);
