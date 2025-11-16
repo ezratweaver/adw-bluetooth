@@ -333,6 +333,8 @@ export class Adapter extends GObject.Object {
     }
 
     public setDiscoverable(discoverable: boolean): void {
+        if (discoverable === this.discovering) return; // prevent already discovering errors
+
         this.adapterProxy.call_sync(
             DBUS_PROPERTIES_SET,
             new GLib.Variant("(ssv)", [
