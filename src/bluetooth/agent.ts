@@ -35,7 +35,7 @@ export class BluetoothAgent extends GObject.Object {
                     },
                 },
             },
-            this,
+            this
         );
     }
 
@@ -97,7 +97,7 @@ export class BluetoothAgent extends GObject.Object {
             agentInterface,
             this._handleMethodCall.bind(this),
             null,
-            null,
+            null
         );
 
         // Register agent with BlueZ
@@ -110,7 +110,7 @@ export class BluetoothAgent extends GObject.Object {
             null,
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
 
         // Request default agent
@@ -123,7 +123,7 @@ export class BluetoothAgent extends GObject.Object {
             null,
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
     }
 
@@ -142,7 +142,7 @@ export class BluetoothAgent extends GObject.Object {
                     null,
                     Gio.DBusCallFlags.NONE,
                     -1,
-                    null,
+                    null
                 );
             } catch (error) {
                 log(`Failed to unregister agent: ${error}`);
@@ -157,7 +157,7 @@ export class BluetoothAgent extends GObject.Object {
         _3: string,
         methodName: string,
         parameters: GLib.Variant,
-        invocation: Gio.DBusMethodInvocation,
+        invocation: Gio.DBusMethodInvocation
     ): void {
         const handleAsync = async () => {
             try {
@@ -180,7 +180,7 @@ export class BluetoothAgent extends GObject.Object {
                     }
                     case "RequestAuthorization": {
                         const [devicePath] = parameters.deep_unpack() as [
-                            string,
+                            string
                         ];
                         const requestId = `authorize-${Date.now()}`;
 
@@ -189,7 +189,7 @@ export class BluetoothAgent extends GObject.Object {
                         this.emit(
                             "authorization-request",
                             devicePath,
-                            requestId,
+                            requestId
                         );
                         break;
                     }
@@ -204,7 +204,7 @@ export class BluetoothAgent extends GObject.Object {
                             "confirmation-request",
                             devicePath,
                             requestId,
-                            passkey,
+                            passkey
                         );
                         break;
                     }
@@ -215,22 +215,20 @@ export class BluetoothAgent extends GObject.Object {
                         break;
                     }
                     case "Cancel": {
-                        this.unregister();
                         invocation.return_value(null);
                         break;
                     }
                     default:
                         invocation.return_dbus_error(
                             "org.freedesktop.DBus.Error.UnknownMethod",
-                            `Unknown method: ${methodName}`,
+                            `Unknown method: ${methodName}`
                         );
                         break;
                 }
             } catch (error) {
-                this.unregister();
                 invocation.return_dbus_error(
                     "org.bluez.Error.Failed",
-                    `Agent error: ${error}`,
+                    `Agent error: ${error}`
                 );
             }
         };
@@ -251,7 +249,7 @@ export class BluetoothAgent extends GObject.Object {
         if (invocation) {
             invocation.return_dbus_error(
                 "org.bluez.Error.Canceled",
-                "Pairing confirmation canceled by user",
+                "Pairing confirmation canceled by user"
             );
             this.pendingRequests.delete(requestId);
         }
@@ -270,7 +268,7 @@ export class BluetoothAgent extends GObject.Object {
         if (invocation) {
             invocation.return_dbus_error(
                 "org.bluez.Error.Rejected",
-                "Authorization request rejected by user",
+                "Authorization request rejected by user"
             );
             this.pendingRequests.delete(requestId);
         }

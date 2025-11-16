@@ -61,7 +61,7 @@ export class BluetoothManager {
             ORG_BLUEZ,
             "/",
             null,
-            null,
+            null
         );
 
         const adapterPaths: string[] = [];
@@ -87,7 +87,7 @@ export class BluetoothManager {
                     new GLib.VariantType("(v)"),
                     Gio.DBusCallFlags.NONE,
                     -1,
-                    null,
+                    null
                 );
 
                 const [alias] = result
@@ -97,7 +97,7 @@ export class BluetoothManager {
 
                 this._adapterAliases.set(
                     adapterPath,
-                    alias || adapterPath.split("/").slice(-1)[0],
+                    alias || adapterPath.split("/").slice(-1)[0]
                 );
             } catch (e) {
                 // Fallback to adapter name if we can't get alias
@@ -140,11 +140,11 @@ export class BluetoothManager {
     }
 
     public destroy(): void {
+        this._activeAdapter?.destroy();
         this._activeAdapter = null;
-        if (this._obex) {
-            this._obex.destroy();
-            this._obex = null;
-        }
+
+        this._obex?.destroy();
+        this._obex = null;
     }
 }
 
