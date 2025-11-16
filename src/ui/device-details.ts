@@ -42,7 +42,7 @@ export class DeviceDetailsModal extends Adw.Window {
                     "device_name",
                 ],
             },
-            this,
+            this
         );
     }
 
@@ -64,7 +64,7 @@ export class DeviceDetailsModal extends Adw.Window {
         this.updateBatteryDisplay();
 
         this._device_icon.set_from_icon_name(
-            device.icon || "bluetooth-symbolic",
+            device.icon || "bluetooth-symbolic"
         );
         this._device_name.set_text(device.alias);
 
@@ -72,7 +72,7 @@ export class DeviceDetailsModal extends Adw.Window {
             "connected",
             this._connection_switch,
             "active",
-            GObject.BindingFlags.SYNC_CREATE,
+            GObject.BindingFlags.SYNC_CREATE
         );
 
         // Show send files group only if device supports Object Push
@@ -81,7 +81,7 @@ export class DeviceDetailsModal extends Adw.Window {
                 "connected",
                 this._send_files_group,
                 "visible",
-                GObject.BindingFlags.SYNC_CREATE,
+                GObject.BindingFlags.SYNC_CREATE
             );
         }
 
@@ -90,14 +90,14 @@ export class DeviceDetailsModal extends Adw.Window {
             this._connection_switch,
             "visible",
             GObject.BindingFlags.SYNC_CREATE |
-                GObject.BindingFlags.INVERT_BOOLEAN,
+                GObject.BindingFlags.INVERT_BOOLEAN
         );
 
         this.device.bind_property(
             "connecting",
             this._connection_spinner,
             "visible",
-            GObject.BindingFlags.SYNC_CREATE,
+            GObject.BindingFlags.SYNC_CREATE
         );
 
         this._connection_switch.connect("state-set", (_, switchTurnedOn) => {
@@ -108,7 +108,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
                 device.connectDevice().catch((error) => {
                     log(
-                        `An error occured trying to connect to device: ${error}`,
+                        `An error occured trying to connect to device: ${error}`
                     );
                     this._connection_switch.set_active(false); // Ensure switch is off
                     device.disconnectDevice(); // Explicity cut connection when timeout/failure occurs
@@ -152,8 +152,8 @@ export class DeviceDetailsModal extends Adw.Window {
 
         if (confirmed) {
             try {
-                bluetooth.adapter?.removeDevice(this.device.devicePath);
                 this.close();
+                await bluetooth.adapter?.removeDevice(this.device.devicePath);
             } catch (error) {
                 log(`Failed to remove device: ${error}`);
             }
@@ -170,14 +170,14 @@ export class DeviceDetailsModal extends Adw.Window {
     private async sendFiles(files: Gio.File[]): Promise<void> {
         const progressDialog = new FileTransferProgressDialog(
             files[0].get_path() ?? "Pending...",
-            this.device.alias,
+            this.device.alias
         );
         progressDialog.present(this);
 
         const obex = bluetooth.obex;
         if (!obex) {
             progressDialog.showError(
-                "File sending is not supported on this system.",
+                "File sending is not supported on this system."
             );
             return;
         }
@@ -192,7 +192,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
         if (!sessionPath) {
             progressDialog.showError(
-                "Could not establish connection to device.",
+                "Could not establish connection to device."
             );
             return;
         }
@@ -247,7 +247,7 @@ export class DeviceDetailsModal extends Adw.Window {
                         if (path === transferPath) {
                             progressDialog.updateProgress(transferred, total);
                         }
-                    },
+                    }
                 ),
 
                 obex.connect("transfer-completed", (_, path: string) => {
@@ -263,13 +263,13 @@ export class DeviceDetailsModal extends Adw.Window {
                             "Make sure that the remote device is switched on and that it accepts Bluetooth connections";
                         progressDialog.showError(message);
                     }
-                }),
+                })
             );
 
             try {
                 transferPath = await obex.sendFileWithSession(
-                    sessionPath,
-                    currentFilePath,
+                    sessionPath!,
+                    currentFilePath
                 );
 
                 if (!transferPath) {

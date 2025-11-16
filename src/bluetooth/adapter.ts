@@ -33,21 +33,21 @@ export class Adapter extends GObject.Object {
                         "Powered",
                         "Adapter powered state",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     discovering: GObject.ParamSpec.boolean(
                         "discovering",
                         "Discovering",
                         "Adapter currently discovering devices",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     alias: GObject.ParamSpec.string(
                         "alias",
                         "Alias",
                         "Adapter alias/name",
                         GObject.ParamFlags.READABLE,
-                        "",
+                        ""
                     ),
                 },
                 Signals: {
@@ -59,7 +59,7 @@ export class Adapter extends GObject.Object {
                     },
                 },
             },
-            this,
+            this
         );
     }
 
@@ -74,7 +74,7 @@ export class Adapter extends GObject.Object {
             ORG_BLUEZ,
             this._adapterPath,
             BLUEZ_ADAPTER_1,
-            null,
+            null
         );
 
         this.agent = new BluetoothAgent();
@@ -106,11 +106,11 @@ export class Adapter extends GObject.Object {
 
             const discoveringValueChanged = changed.lookup_value(
                 "Discovering",
-                null,
+                null
             );
             if (discoveringValueChanged) {
                 this._setDiscoveringState(
-                    discoveringValueChanged.get_boolean(),
+                    discoveringValueChanged.get_boolean()
                 );
             }
 
@@ -133,7 +133,7 @@ export class Adapter extends GObject.Object {
             (_, _1, _2, _3, _4, parameters) => {
                 const [path, interfaces] = parameters.deep_unpack() as [
                     string,
-                    Record<string, Record<string, GLib.Variant>>,
+                    Record<string, Record<string, GLib.Variant>>
                 ];
 
                 if (
@@ -179,7 +179,7 @@ export class Adapter extends GObject.Object {
                         });
                     }
                 }
-            },
+            }
         );
 
         systemBus.signal_subscribe(
@@ -192,7 +192,7 @@ export class Adapter extends GObject.Object {
             (_, _1, _2, _3, _4, parameters) => {
                 const [path, interfaces] = parameters.deep_unpack() as [
                     string,
-                    string[],
+                    string[]
                 ];
 
                 if (
@@ -202,18 +202,18 @@ export class Adapter extends GObject.Object {
                     log(`Device getting removed ${path}`);
 
                     const deviceIndex = this.devices.findIndex(
-                        (device) => device.devicePath === path,
+                        (device) => device.devicePath === path
                     );
 
                     const limboDeviceIndex = this.devices.findIndex(
-                        (device) => device.devicePath === path,
+                        (device) => device.devicePath === path
                     );
 
                     if (deviceIndex !== -1) {
                         this.devices.splice(deviceIndex, 1);
 
                         this.devicePaths = this.devicePaths.filter(
-                            (p) => p !== path,
+                            (p) => p !== path
                         );
 
                         this.emit("device-removed", path);
@@ -223,11 +223,11 @@ export class Adapter extends GObject.Object {
                         this._limboDevices.splice(limboDeviceIndex, 1);
 
                         this.devicePaths = this.devicePaths.filter(
-                            (p) => p !== path,
+                            (p) => p !== path
                         );
                     }
                 }
-            },
+            }
         );
 
         const result = systemBus.call_sync(
@@ -239,11 +239,11 @@ export class Adapter extends GObject.Object {
             new GLib.VariantType("(a{oa{sa{sv}}})"),
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
 
         const [objects] = result.deep_unpack() as [
-            Record<string, Record<string, Record<string, GLib.Variant>>>,
+            Record<string, Record<string, Record<string, GLib.Variant>>>
         ];
 
         for (const [path, interfaces] of Object.entries(objects)) {
@@ -262,7 +262,7 @@ export class Adapter extends GObject.Object {
                     });
                 } catch (e) {
                     log(
-                        `Encountered an error while creating device ${path}: ${e}`,
+                        `Encountered an error while creating device ${path}: ${e}`
                     );
                     continue;
                 }
@@ -300,7 +300,7 @@ export class Adapter extends GObject.Object {
             null,
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
 
         this.setDiscoverable(true);
@@ -312,7 +312,7 @@ export class Adapter extends GObject.Object {
             null,
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
 
         this.setDiscoverable(false);
@@ -328,7 +328,7 @@ export class Adapter extends GObject.Object {
             ]),
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
     }
 
@@ -342,18 +342,28 @@ export class Adapter extends GObject.Object {
             ]),
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
     }
 
-    public removeDevice(devicePath: string): void {
-        this.adapterProxy.call_sync(
-            "RemoveDevice",
-            new GLib.Variant("(o)", [devicePath]),
-            Gio.DBusCallFlags.NONE,
-            -1,
-            null,
-        );
+    public async removeDevice(devicePath: string): Promise<void> {
+        await new Promise<void>((resolve, reject) => {
+            this.adapterProxy.call(
+                "RemoveDevice",
+                new GLib.Variant("(o)", [devicePath]),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null,
+                (proxy, result) => {
+                    try {
+                        proxy?.call_finish(result);
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                }
+            );
+        });
     }
 
     get adapterPath(): string {
