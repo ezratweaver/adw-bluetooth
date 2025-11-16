@@ -81,7 +81,7 @@ export class Adapter extends GObject.Object {
 
         this._loadProperties();
         this._setupPropertyChangeListener();
-        this._syncSavedDevices();
+        this._monitorForNewDeviceObjects();
     }
 
     private _loadProperties(): void {
@@ -122,7 +122,7 @@ export class Adapter extends GObject.Object {
         });
     }
 
-    private _syncSavedDevices(): void {
+    private _monitorForNewDeviceObjects(): void {
         systemBus.signal_subscribe(
             ORG_BLUEZ,
             DBUS_OBJECT_MANAGER,
@@ -294,6 +294,15 @@ export class Adapter extends GObject.Object {
         this.notify("alias");
     }
 
+    private _stopAllOutboundConnectionRequests() {
+        for (const device of this.devices) {
+            if (device.connecting) {
+                // If we are mid connecting a device, close that connection
+                device.disconnectDevice();
+            }
+        }
+    }
+
     public startDiscovery() {
         this.adapterProxy.call_sync(
             "StartDiscovery",
@@ -319,6 +328,10 @@ export class Adapter extends GObject.Object {
     }
 
     public setAdapterPower(powered: boolean): void {
+        if (!powered) {
+            this._stopAllOutboundConnectionRequests();
+        }
+
         this.adapterProxy.call_sync(
             DBUS_PROPERTIES_SET,
             new GLib.Variant("(ssv)", [
@@ -399,11 +412,6 @@ export class Adapter extends GObject.Object {
 
         this.bluetoothAgent.unregister();
 
-        for (const device of this.devices) {
-            if (device.connecting) {
-                // If we are mid connecting a device, close that connection
-                device.disconnectDevice();
-            }
-        }
+        this._stopAllOutboundConnectionRequests();
     }
 }
