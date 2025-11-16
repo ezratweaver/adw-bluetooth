@@ -81,7 +81,8 @@ export class Adapter extends GObject.Object {
 
         this._loadProperties();
         this._setupPropertyChangeListener();
-        this._monitorForNewDeviceObjects();
+        this._monitorDeviceObjectChanges();
+        this._syncDeviceObjects();
     }
 
     private _loadProperties(): void {
@@ -122,7 +123,7 @@ export class Adapter extends GObject.Object {
         });
     }
 
-    private _monitorForNewDeviceObjects(): void {
+    private _monitorDeviceObjectChanges(): void {
         systemBus.signal_subscribe(
             ORG_BLUEZ,
             DBUS_OBJECT_MANAGER,
@@ -229,8 +230,10 @@ export class Adapter extends GObject.Object {
                 }
             }
         );
+    }
 
-        const result = systemBus.call_sync(
+    private _syncDeviceObjects() {
+        const managedObjectsPacked = systemBus.call_sync(
             ORG_BLUEZ,
             "/",
             DBUS_OBJECT_MANAGER,
@@ -242,11 +245,11 @@ export class Adapter extends GObject.Object {
             null
         );
 
-        const [objects] = result.deep_unpack() as [
+        const [managedObjects] = managedObjectsPacked.deep_unpack() as [
             Record<string, Record<string, Record<string, GLib.Variant>>>
         ];
 
-        for (const [path, interfaces] of Object.entries(objects)) {
+        for (const [path, interfaces] of Object.entries(managedObjects)) {
             if (
                 path.includes(this._adapterPath) &&
                 interfaces[BLUEZ_DEVICE_1]
