@@ -371,22 +371,26 @@ export class Window extends Adw.ApplicationWindow {
                 return;
             }
 
-            try {
-                bluetooth.adapter.setAdapterPower(state);
-
-                // If we're powering on, then start discovery
-                if (state && !bluetooth.adapter.discovering) {
-                    try {
-                        bluetooth.adapter.startDiscovery();
-                    } catch (error) {
-                        log(`Failed to start discovery on power on: ${error}`);
-                        this._showToast("Failed to start device discovery");
+            bluetooth.adapter
+                .setAdapterPower(state)
+                .then(() => {
+                    // If we're powering on, then start discovery
+                    if (state && !bluetooth.adapter?.discovering) {
+                        try {
+                            bluetooth.adapter?.startDiscovery();
+                        } catch (error) {
+                            log(
+                                `Failed to start discovery on power on: ${error}`
+                            );
+                            this._showToast("Failed to start device discovery");
+                        }
                     }
-                }
-            } catch (error) {
-                this._showToast("Failed to control Bluetooth power");
-                this._bluetooth_toggle.set_active(!state); // Revert switch on error
-            }
+                })
+                .catch((error) => {
+                    log(`Error occurred setting adapter power: ${error}`);
+                    this._showToast("Failed to control Bluetooth power");
+                    this._bluetooth_toggle.set_active(!state); // Revert switch on error
+                });
         });
     }
 

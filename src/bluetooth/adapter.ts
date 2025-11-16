@@ -307,6 +307,8 @@ export class Adapter extends GObject.Object {
     }
 
     public startDiscovery() {
+        if (this.discovering) return;
+
         this.adapterProxy.call_sync(
             "StartDiscovery",
             null,
@@ -319,6 +321,8 @@ export class Adapter extends GObject.Object {
     }
 
     public stopDiscovery() {
+        if (!this.discovering) return;
+
         this.adapterProxy.call_sync(
             "StopDiscovery",
             null,
@@ -330,27 +334,35 @@ export class Adapter extends GObject.Object {
         this.setDiscoverable(false);
     }
 
-    public setAdapterPower(powered: boolean): void {
+    public async setAdapterPower(powered: boolean): Promise<void> {
         if (!powered) {
             this._stopAllOutboundConnectionRequests();
         }
 
-        this.adapterProxy.call_sync(
-            DBUS_PROPERTIES_SET,
-            new GLib.Variant("(ssv)", [
-                BLUEZ_ADAPTER_1,
-                "Powered",
-                new GLib.Variant("b", powered),
-            ]),
-            Gio.DBusCallFlags.NONE,
-            -1,
-            null
-        );
+        await new Promise<void>((resolve, reject) => {
+            this.adapterProxy.call(
+                DBUS_PROPERTIES_SET,
+                new GLib.Variant("(ssv)", [
+                    BLUEZ_ADAPTER_1,
+                    "Powered",
+                    new GLib.Variant("b", powered),
+                ]),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null,
+                (proxy, result) => {
+                    try {
+                        proxy?.call_finish(result);
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                }
+            );
+        });
     }
 
     public setDiscoverable(discoverable: boolean): void {
-        if (discoverable === this.discovering) return; // prevent already discovering errors
-
         this.adapterProxy.call_sync(
             DBUS_PROPERTIES_SET,
             new GLib.Variant("(ssv)", [
