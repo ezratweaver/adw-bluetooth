@@ -84,12 +84,15 @@ template $Gjs_Window: Adw.ApplicationWindow {
           Gtk.ScrolledWindow {
             propagate-natural-height: true;
 
-            Gtk.ListBox devices-list {
-              selection-mode: none;
+            Adw.Clamp {
+              Gtk.ListBox devices-list {
+                margin-bottom: 12;
+                selection-mode: none;
 
-              css-classes: [
-                "boxed-list",
-              ];
+                css-classes: [
+                  "boxed-list",
+                ];
+              }
             }
           }
         }
