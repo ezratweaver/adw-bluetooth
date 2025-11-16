@@ -434,6 +434,37 @@ export class Window extends Adw.ApplicationWindow {
     private _setupDeviceList(): void {
         if (!bluetooth.adapter) return;
 
+        const placeholderBox = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            halign: Gtk.Align.CENTER,
+            valign: Gtk.Align.CENTER,
+            spacing: 12,
+            marginTop: 40,
+            marginBottom: 40,
+        });
+
+        const placeholderIcon = new Gtk.Image({
+            iconName: "bluetooth-symbolic",
+            pixelSize: 64,
+            cssClasses: ["dim-label"],
+        });
+
+        const placeholderTitle = new Gtk.Label({
+            label: "No devices found",
+            cssClasses: ["title-4", "dim-label"],
+        });
+
+        const placeholderDescription = new Gtk.Label({
+            label: "Turn on a nearby bluetooth device to start pairing.",
+            cssClasses: ["dim-label"],
+        });
+
+        placeholderBox.append(placeholderIcon);
+        placeholderBox.append(placeholderTitle);
+        placeholderBox.append(placeholderDescription);
+
+        this._devices_list.set_placeholder(placeholderBox);
+
         /*
          * Sorts devices by priority as:
          *
