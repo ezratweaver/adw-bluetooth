@@ -323,15 +323,19 @@ export class Adapter extends GObject.Object {
     public stopDiscovery() {
         if (!this.discovering) return;
 
-        this.adapterProxy.call_sync(
-            "StopDiscovery",
-            null,
-            Gio.DBusCallFlags.NONE,
-            -1,
-            null
-        );
+        try {
+            this.adapterProxy.call_sync(
+                "StopDiscovery",
+                null,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null
+            );
 
-        this.setDiscoverable(false);
+            this.setDiscoverable(false);
+        } catch (error) {
+            log(`Failed to stop discovery: ${error}`);
+        }
     }
 
     public async setAdapterPower(powered: boolean): Promise<void> {

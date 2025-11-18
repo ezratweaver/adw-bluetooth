@@ -353,21 +353,21 @@ export class Window extends Adw.ApplicationWindow {
         if (!bluetooth.adapter) return;
 
         // On enabling / disabling bluetooth
-        this._bluetooth_toggle.connect("state-set", (_, state) => {
+        this._bluetooth_toggle.connect("state-set", (_, isPoweringOn) => {
             if (!bluetooth.adapter) {
-                this._bluetooth_toggle.set_state(!state); // Revert switch if no adapter
+                this._bluetooth_toggle.set_state(!isPoweringOn); // Revert switch if no adapter
                 return;
             }
 
             // Update UI state immediately
-            this._disabled_state.set_visible(!state);
-            this._enabled_state.set_visible(state);
+            this._disabled_state.set_visible(!isPoweringOn);
+            this._enabled_state.set_visible(isPoweringOn);
 
             bluetooth.adapter
-                .setAdapterPower(state)
+                .setAdapterPower(isPoweringOn)
                 .then(() => {
                     // If we're powering on, then start discovery
-                    if (state && !bluetooth.adapter?.discovering) {
+                    if (isPoweringOn && !bluetooth.adapter?.discovering) {
                         try {
                             bluetooth.adapter?.startDiscovery();
                         } catch (error) {
@@ -381,11 +381,11 @@ export class Window extends Adw.ApplicationWindow {
                 .catch((error) => {
                     log(`Error occurred setting adapter power: ${error}`);
                     this._showToast("Failed to control Bluetooth power");
-                    this._bluetooth_toggle.set_state(!state); // Revert switch on error
+                    this._bluetooth_toggle.set_state(!isPoweringOn); // Revert switch on error
 
                     // Revert UI state on error
-                    this._disabled_state.set_visible(state);
-                    this._enabled_state.set_visible(!state);
+                    this._disabled_state.set_visible(isPoweringOn);
+                    this._enabled_state.set_visible(!isPoweringOn);
                 });
         });
     }
