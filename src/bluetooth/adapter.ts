@@ -297,11 +297,11 @@ export class Adapter extends GObject.Object {
         this.notify("alias");
     }
 
-    private _stopAllOutboundConnectionRequests() {
+    private async _stopAllOutboundConnectionRequests() {
         for (const device of this.devices) {
             if (device.connecting) {
                 // If we are mid connecting a device, close that connection
-                device.disconnectDevice();
+                await device.disconnectDevice();
             }
         }
     }
@@ -336,7 +336,7 @@ export class Adapter extends GObject.Object {
 
     public async setAdapterPower(powered: boolean): Promise<void> {
         if (!powered) {
-            this._stopAllOutboundConnectionRequests();
+            await this._stopAllOutboundConnectionRequests();
         }
 
         await new Promise<void>((resolve, reject) => {

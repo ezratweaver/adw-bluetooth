@@ -48,63 +48,63 @@ export class Device extends GObject.Object {
                         "Address",
                         "Device address",
                         GObject.ParamFlags.READABLE,
-                        "",
+                        ""
                     ),
                     alias: GObject.ParamSpec.string(
                         "alias",
                         "Alias",
                         "Device alias",
                         GObject.ParamFlags.READABLE,
-                        "",
+                        ""
                     ),
                     blocked: GObject.ParamSpec.boolean(
                         "blocked",
                         "Blocked",
                         "Device blocked",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     bonded: GObject.ParamSpec.boolean(
                         "bonded",
                         "Bonded",
                         "Device bonded",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     connected: GObject.ParamSpec.boolean(
                         "connected",
                         "Connected",
                         "Device connected",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     name: GObject.ParamSpec.string(
                         "name",
                         "Name",
                         "Device name",
                         GObject.ParamFlags.READABLE,
-                        "",
+                        ""
                     ),
                     paired: GObject.ParamSpec.boolean(
                         "paired",
                         "Paired",
                         "Device paired",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     trusted: GObject.ParamSpec.boolean(
                         "trusted",
                         "Trusted",
                         "Device trusted",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     connecting: GObject.ParamSpec.boolean(
                         "connecting",
                         "Connecting",
                         "Device connecting",
                         GObject.ParamFlags.READABLE,
-                        false,
+                        false
                     ),
                     deviceClass: GObject.ParamSpec.uint(
                         "device-class",
@@ -113,20 +113,20 @@ export class Device extends GObject.Object {
                         GObject.ParamFlags.READABLE,
                         0,
                         0xffffff,
-                        0,
+                        0
                     ),
                     icon: GObject.ParamSpec.string(
                         "icon",
                         "Icon",
                         "Device icon",
                         GObject.ParamFlags.READABLE,
-                        "",
+                        ""
                     ),
                     uuids: GObject.ParamSpec.jsobject(
                         "uuids",
                         "UUIDs",
                         "Device UUIDs",
-                        GObject.ParamFlags.READABLE,
+                        GObject.ParamFlags.READABLE
                     ),
                     batteryPercentage: GObject.ParamSpec.int(
                         "battery-percentage",
@@ -135,14 +135,14 @@ export class Device extends GObject.Object {
                         GObject.ParamFlags.READABLE,
                         -1,
                         100,
-                        -1,
+                        -1
                     ),
                 },
                 Signals: {
                     "device-changed": {},
                 },
             },
-            this,
+            this
         );
     }
 
@@ -157,7 +157,7 @@ export class Device extends GObject.Object {
             ORG_BLUEZ,
             this._devicePath,
             BLUEZ_DEVICE_1,
-            null,
+            null
         );
 
         this.blockAgent = props.blockAgent;
@@ -225,10 +225,10 @@ export class Device extends GObject.Object {
                     const newValue = isBoolean
                         ? changedValue.get_boolean()
                         : isNumber
-                          ? changedValue.get_uint32()
-                          : isStringArray
-                            ? changedValue.get_strv()
-                            : changedValue.get_string()[0];
+                        ? changedValue.get_uint32()
+                        : isStringArray
+                        ? changedValue.get_strv()
+                        : changedValue.get_string()[0];
 
                     if ((this as any)[privateProp] !== newValue) {
                         (this as any)[privateProp] = newValue;
@@ -259,7 +259,7 @@ export class Device extends GObject.Object {
             (_, __, ___, ____, _____, params) => {
                 const [objectPath, interfaces] = params.deep_unpack() as [
                     string,
-                    Record<string, any>,
+                    Record<string, any>
                 ];
                 if (
                     objectPath === this._devicePath &&
@@ -267,7 +267,7 @@ export class Device extends GObject.Object {
                 ) {
                     this._createBatteryProxy();
                 }
-            },
+            }
         );
 
         systemBus.signal_subscribe(
@@ -280,7 +280,7 @@ export class Device extends GObject.Object {
             (_, __, ___, ____, _____, params) => {
                 const [objectPath, interfaces] = params.deep_unpack() as [
                     string,
-                    string[],
+                    string[]
                 ];
                 if (
                     objectPath === this._devicePath &&
@@ -288,7 +288,7 @@ export class Device extends GObject.Object {
                 ) {
                     this._removeBatteryProxy();
                 }
-            },
+            }
         );
 
         this._createBatteryProxy();
@@ -303,13 +303,13 @@ export class Device extends GObject.Object {
                 ORG_BLUEZ,
                 this._devicePath,
                 BLUEZ_BATTERY_1,
-                null,
+                null
             );
 
             this.batteryProxy.connect("g-properties-changed", (_, changed) => {
                 const percentageChanged = changed.lookup_value(
                     "Percentage",
-                    null,
+                    null
                 );
                 if (percentageChanged) {
                     const newPercentage = percentageChanged.get_byte();
@@ -358,7 +358,7 @@ export class Device extends GObject.Object {
             ]),
             Gio.DBusCallFlags.NONE,
             -1,
-            null,
+            null
         );
     }
 
@@ -394,12 +394,12 @@ export class Device extends GObject.Object {
                         } catch (error) {
                             reject(error);
                         }
-                    },
+                    }
                 );
             });
 
             const connectionCount = incrementDeviceConnectionCount(
-                this._devicePath,
+                this._devicePath
             );
 
             /*
@@ -438,7 +438,7 @@ export class Device extends GObject.Object {
                         } catch (error) {
                             reject(error);
                         }
-                    },
+                    }
                 );
             });
         } finally {
@@ -468,7 +468,7 @@ export class Device extends GObject.Object {
                         } catch (error) {
                             reject(error);
                         }
-                    },
+                    }
                 );
             });
         } finally {
