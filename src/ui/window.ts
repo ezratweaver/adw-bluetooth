@@ -355,7 +355,7 @@ export class Window extends Adw.ApplicationWindow {
         // On enabling / disabling bluetooth
         this._bluetooth_toggle.connect("state-set", (_, state) => {
             if (!bluetooth.adapter) {
-                this._bluetooth_toggle.set_active(!state); // Revert switch if no adapter
+                this._bluetooth_toggle.set_state(!state); // Revert switch if no adapter
                 return;
             }
 
@@ -381,7 +381,7 @@ export class Window extends Adw.ApplicationWindow {
                 .catch((error) => {
                     log(`Error occurred setting adapter power: ${error}`);
                     this._showToast("Failed to control Bluetooth power");
-                    this._bluetooth_toggle.set_active(!state); // Revert switch on error
+                    this._bluetooth_toggle.set_state(!state); // Revert switch on error
 
                     // Revert UI state on error
                     this._disabled_state.set_visible(state);
