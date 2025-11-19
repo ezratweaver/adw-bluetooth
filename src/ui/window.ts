@@ -698,11 +698,8 @@ export class Window extends Adw.ApplicationWindow {
         try {
             if (!device.paired) {
                 // Stop discovery while pairing/connecting
-                try {
-                    bluetooth.adapter?.stopDiscovery();
-                } catch (error) {
-                    log(`Failed to stop discovery: ${error}`);
-                }
+                bluetooth.adapter?.stopDiscovery();
+
                 // Pair first if not paired
                 await device.pairDevice();
                 // After successful pairing, connect automatically
@@ -711,6 +708,8 @@ export class Window extends Adw.ApplicationWindow {
                 // If connected, disconnect
                 await device.disconnectDevice();
             } else {
+                bluetooth.adapter?.stopDiscovery();
+
                 // If paired but not connected, connect
                 await device.connectDevice();
             }

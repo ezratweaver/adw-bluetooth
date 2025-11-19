@@ -116,33 +116,11 @@ export class VimNavigator {
             try {
                 const device = findDeviceByPath(selectedRow.name);
                 if (device && !device.connecting) {
-                    this._handleDeviceAction(device);
+                    this.callbacks.onDevicePair(device);
                 }
             } catch (e) {
                 log(`Error occurred interacting with device: ${e}`);
             }
         }
     }
-
-    private async _handleDeviceAction(device: Device): Promise<void> {
-        if (!device.paired) {
-            // Device not paired - pair it
-            await this.callbacks.onDevicePair(device);
-        } else if (device.connected) {
-            // Device connected - disconnect it
-            try {
-                await device.disconnectDevice();
-            } catch (error) {
-                log(`Failed to disconnect device: ${error}`);
-            }
-        } else {
-            // Device paired but not connected - connect it
-            try {
-                await device.connectDevice();
-            } catch (error) {
-                log(`Failed to connect device: ${error}`);
-            }
-        }
-    }
 }
-
