@@ -38,7 +38,7 @@ export class Application extends Adw.Application {
 
         const provider = new Gtk.CssProvider();
         provider.load_from_resource(
-            "/com/ezratweaver/AdwBluetooth/styles/style.css",
+            "/com/ezratweaver/AdwBluetooth/styles/style.css"
         );
 
         const display = Gdk.Display.get_default();
@@ -46,7 +46,7 @@ export class Application extends Adw.Application {
             Gtk.StyleContext.add_provider_for_display(
                 display,
                 provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             );
 
         this.window.present();

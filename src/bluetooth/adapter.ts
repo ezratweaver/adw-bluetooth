@@ -19,6 +19,7 @@ export class Adapter extends GObject.Object {
     private agent: BluetoothAgent;
 
     private _powered: boolean = false;
+    private _powering: boolean = false;
     private _discovering: boolean = false;
     private _alias: string = "";
     private _devices: Device[] = [];
@@ -32,6 +33,13 @@ export class Adapter extends GObject.Object {
                         "powered",
                         "Powered",
                         "Adapter powered state",
+                        GObject.ParamFlags.READABLE,
+                        false
+                    ),
+                    powering: GObject.ParamSpec.boolean(
+                        "powering",
+                        "Powering",
+                        "Adapter currently powering on/off state",
                         GObject.ParamFlags.READABLE,
                         false
                     ),
@@ -285,6 +293,12 @@ export class Adapter extends GObject.Object {
         this.notify("discovering");
     }
 
+    private _setPoweringState(powering: boolean) {
+        if (this._powering === powering) return;
+        this._powering = powering;
+        this.notify("powering");
+    }
+
     private _setPoweredState(powered: boolean): void {
         if (this._powered === powered) return;
         this._powered = powered;
@@ -304,6 +318,31 @@ export class Adapter extends GObject.Object {
                 await device.disconnectDevice();
             }
         }
+    }
+
+    private async _waitingForConnectionsToClose(): Promise<void> {
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+            const maxWaitingTime = 10 * 1000;
+
+            const checkAllOpenConnections = () => {
+                if (!this.devices.some((d) => d.connecting)) {
+                    resolve();
+                    return GLib.SOURCE_REMOVE;
+                } else if (Date.now() > startTime + maxWaitingTime) {
+                    resolve();
+                    return GLib.SOURCE_REMOVE;
+                } else {
+                    return GLib.SOURCE_CONTINUE;
+                }
+            };
+
+            GLib.timeout_add_seconds(
+                GLib.PRIORITY_DEFAULT_IDLE,
+                1,
+                checkAllOpenConnections
+            );
+        });
     }
 
     public startDiscovery() {
@@ -340,7 +379,13 @@ export class Adapter extends GObject.Object {
 
     public async setAdapterPower(powered: boolean): Promise<void> {
         if (!powered) {
+            this._setPoweringState(true);
+
             await this._stopAllOutboundConnectionRequests();
+
+            await this._waitingForConnectionsToClose();
+
+            this._setPoweringState(false);
         }
 
         await new Promise<void>((resolve, reject) => {
