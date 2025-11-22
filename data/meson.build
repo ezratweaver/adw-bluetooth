@@ -47,3 +47,5 @@ data_res = gnome.compile_resources(
   install_dir: pkgdatadir,
   dependencies: blueprints,
 )
+
+subdir('icons')

@@ -537,7 +537,7 @@ export class Window extends Adw.ApplicationWindow {
     private _showAbout() {
         const aboutDialog = new Adw.AboutDialog({
             application_name: "Adwaita Bluetooth",
-            application_icon: "bluetooth-active-symbolic",
+            application_icon: "com.ezratweaver.AdwBluetooth",
             version: "0.3.0",
             developer_name: "Ezra Weaver",
             website: "https://github.com/ezratweaver/adw-bluetooth",
