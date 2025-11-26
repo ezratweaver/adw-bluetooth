@@ -169,7 +169,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
     private async sendFiles(files: Gio.File[]): Promise<void> {
         const progressDialog = new FileTransferProgressDialog(
-            files[0].get_path() ?? "Pending...",
+            files[0].get_basename() ?? "Pending...",
             this.device.alias
         );
         progressDialog.present(this);
@@ -228,16 +228,16 @@ export class DeviceDetailsModal extends Adw.Window {
 
             const currentFile = files[currentFileIndex];
             const currentFilePath = currentFile.get_path();
-            const currentFilename = currentFile.get_basename();
+            const currentFileName = currentFile.get_basename();
 
-            if (!currentFilePath || !currentFilename) {
+            if (!currentFilePath || !currentFileName) {
                 // Skip invalid files
                 currentFileIndex++;
                 return processNextFile();
             }
 
             progressDialog.hideError();
-            progressDialog.updateFrom(currentFilePath);
+            progressDialog.updateFrom(currentFileName);
             progressDialog.updateProgress(0, 1);
 
             signalIds.push(
@@ -276,14 +276,14 @@ export class DeviceDetailsModal extends Adw.Window {
                     const message =
                         files.length === 1
                             ? "Could not start file transfer."
-                            : `Could not start transfer for "${currentFilename}".`;
+                            : `Could not start transfer for "${currentFileName}".`;
                     progressDialog.showError(message);
                 }
             } catch (error) {
                 const message =
                     files.length === 1
                         ? `Failed to send file: ${error}`
-                        : `Failed to send "${currentFilename}": ${error}`;
+                        : `Failed to send "${currentFileName}": ${error}`;
                 progressDialog.showError(message);
             }
         };
