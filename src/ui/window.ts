@@ -358,12 +358,13 @@ export class Window extends Adw.ApplicationWindow {
         bluetoothToggleHandlerId = this._bluetooth_toggle.connect(
             "state-set",
             (_, isPoweringOn) => {
-                const revertSwitchState = () => {
+                const setSwitchState = (state: boolean) => {
                     GObject.signal_handler_block(
                         this._bluetooth_toggle,
                         bluetoothToggleHandlerId
                     );
-                    this._bluetooth_toggle.set_active(!isPoweringOn);
+                    this._bluetooth_toggle.set_active(state);
+                    this._bluetooth_toggle.set_state(state);
                     GObject.signal_handler_unblock(
                         this._bluetooth_toggle,
                         bluetoothToggleHandlerId
@@ -371,7 +372,7 @@ export class Window extends Adw.ApplicationWindow {
                 };
 
                 if (!bluetooth.adapter) {
-                    revertSwitchState();
+                    setSwitchState(!isPoweringOn);
                     return true;
                 }
 
@@ -395,17 +396,21 @@ export class Window extends Adw.ApplicationWindow {
                                 );
                             }
                         }
+
+                        setSwitchState(isPoweringOn);
                     })
                     .catch((error) => {
                         log(`Error occurred setting adapter power: ${error}`);
                         this._showToast("Failed to control Bluetooth power");
 
-                        revertSwitchState();
+                        setSwitchState(!isPoweringOn);
 
                         // Revert UI state on error
                         this._disabled_state.set_visible(isPoweringOn);
                         this._enabled_state.set_visible(!isPoweringOn);
                     });
+
+                return true;
             }
         );
     }
