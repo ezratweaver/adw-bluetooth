@@ -152,9 +152,8 @@ export class IncomingTransferManager {
             this.incomingTransfers.delete(transferPath);
         };
 
-        progressDialog.connect("cancelled", stopTransfer);
         progressDialog.connect("closed", () => {
-            if (progressDialog.progress >= 1) {
+            if (progressDialog.progress < 1) {
                 stopTransfer();
             }
         });

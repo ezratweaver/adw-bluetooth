@@ -32,7 +32,6 @@ export class FileTransferProgressDialog extends Adw.Dialog {
                     "error_icon",
                 ],
                 Signals: {
-                    cancelled: {},
                     retry: {},
                 },
             },
@@ -47,7 +46,6 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         this._to_label.set_text(toName);
 
         this._cancel_button.connect("clicked", () => {
-            this.emit("cancelled");
             this.close();
         });
 

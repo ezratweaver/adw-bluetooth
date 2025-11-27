@@ -300,9 +300,8 @@ export class DeviceDetailsModal extends Adw.Window {
             cleanupSession();
         };
 
-        progressDialog.connect("cancelled", stopTransfer);
         progressDialog.connect("closed", () => {
-            if (progressDialog.progress >= 1) {
+            if (progressDialog.progress < 1) {
                 stopTransfer();
             }
         });
