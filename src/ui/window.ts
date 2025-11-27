@@ -36,6 +36,7 @@ export class Window extends Adw.ApplicationWindow {
 
     private _incomingTransferManager!: IncomingTransferManager;
     private _vimNavigator!: VimNavigator;
+    private _activePairingCount: number = 0;
 
     static {
         GObject.registerClass(
@@ -684,7 +685,7 @@ export class Window extends Adw.ApplicationWindow {
                 if (device.paired) {
                     this._showDeviceDetails(device);
                 } else {
-                    this._handleDevicePair(device);
+                    this._handleDeviceAction(device);
                 }
             }
         });
@@ -719,31 +720,55 @@ export class Window extends Adw.ApplicationWindow {
         }
     }
 
-    private async _handleDevicePair(device: Device) {
+    private async _handleDeviceAction(device: Device) {
         try {
-            if (!device.paired) {
-                // Stop discovery while pairing/connecting
-                bluetooth.adapter?.stopDiscovery();
+            this._activePairingCount++;
 
-                // Pair first if not paired
+            if (!device.paired) {
+                if (this._activePairingCount === 1) {
+                    log(`Stopping discovery for pairing with ${device.alias}`);
+                    bluetooth.adapter?.stopDiscovery();
+                }
+
                 await device.pairDevice();
-                // After successful pairing, connect automatically
                 await device.connectDevice();
             } else if (device.connected) {
-                // If connected, disconnect
                 await device.disconnectDevice();
             } else {
-                bluetooth.adapter?.stopDiscovery();
+                if (this._activePairingCount === 1) {
+                    log(`Stopping discovery for connecting to ${device.alias}`);
+                    bluetooth.adapter?.stopDiscovery();
+                }
 
-                // If paired but not connected, connect
                 await device.connectDevice();
             }
-        } catch (error) {
-            if (!device.paired || device.connected) {
+
+            this._activePairingCount--;
+
+            if (this._activePairingCount === 0) {
                 try {
+                    log(
+                        `Restarting discovery after successful pairing/connection`
+                    );
                     bluetooth.adapter?.startDiscovery();
                 } catch (error) {
-                    log(`Failed to restart discovery: ${error}`);
+                    log(`Failed to restart discovery after success: ${error}`);
+                }
+            }
+        } catch (error) {
+            this._activePairingCount--;
+
+            if (
+                this._activePairingCount === 0 &&
+                (!device.paired || device.connected)
+            ) {
+                try {
+                    log(
+                        `Restarting discovery after pairing failure for ${device.alias}`
+                    );
+                    bluetooth.adapter?.startDiscovery();
+                } catch (error) {
+                    log(`Failed to restart discovery after error: ${error}`);
                 }
             }
 
@@ -780,7 +805,7 @@ export class Window extends Adw.ApplicationWindow {
     private _setupVimNavigation(): void {
         // Initialize vim navigator
         this._vimNavigator = new VimNavigator(this._devices_list, {
-            onDevicePair: this._handleDevicePair.bind(this),
+            onDevicePair: this._handleDeviceAction.bind(this),
         });
 
         // Vim-style navigation actions
