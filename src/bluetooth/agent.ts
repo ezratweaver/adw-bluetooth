@@ -82,11 +82,12 @@ export class BluetoothAgent extends GObject.Object {
 
     public register(): void {
         if (this.registrationId) {
-            throw new Error("Another device is already using agent to pair");
+            throw new Error("Agent is already registered");
         }
 
         const agentInterface =
             this.agentNodeInfo.lookup_interface(BLUEZ_AGENT_1);
+
         if (!agentInterface) {
             throw new Error("Failed to lookup Agent interface");
         }
@@ -129,7 +130,6 @@ export class BluetoothAgent extends GObject.Object {
     public unregister(): void {
         if (this.registrationId) {
             systemBus.unregister_object(this.registrationId);
-            this.registrationId = null;
 
             try {
                 systemBus.call_sync(
@@ -146,6 +146,8 @@ export class BluetoothAgent extends GObject.Object {
             } catch (error) {
                 log(`Failed to unregister agent: ${error}`);
             }
+
+            this.registrationId = null;
         }
     }
 
@@ -158,81 +160,77 @@ export class BluetoothAgent extends GObject.Object {
         parameters: GLib.Variant,
         invocation: Gio.DBusMethodInvocation
     ): void {
-        const handleAsync = async () => {
-            try {
-                switch (methodName) {
-                    case "DisplayPinCode": {
-                        const [devicePath, pincode] =
-                            parameters.deep_unpack() as [string, string];
+        try {
+            switch (methodName) {
+                case "DisplayPinCode": {
+                    const [devicePath, pincode] = parameters.deep_unpack() as [
+                        string,
+                        string
+                    ];
 
-                        this.emit("pin-display", devicePath, pincode);
-                        invocation.return_value(null);
-                        break;
-                    }
-                    case "DisplayPasskey": {
-                        const [devicePath, passkey] =
-                            parameters.deep_unpack() as [string, number];
-
-                        this.emit("passkey-display", devicePath, passkey);
-                        invocation.return_value(null);
-                        break;
-                    }
-                    case "RequestAuthorization": {
-                        const [devicePath] = parameters.deep_unpack() as [
-                            string
-                        ];
-                        const requestId = `authorize-${Date.now()}`;
-
-                        this.pendingRequests.set(requestId, invocation);
-
-                        this.emit(
-                            "authorization-request",
-                            devicePath,
-                            requestId
-                        );
-                        break;
-                    }
-                    case "RequestConfirmation": {
-                        const [devicePath, passkey] =
-                            parameters.deep_unpack() as [string, number];
-                        const requestId = `confirm-${Date.now()}`;
-
-                        this.pendingRequests.set(requestId, invocation);
-
-                        this.emit(
-                            "confirmation-request",
-                            devicePath,
-                            requestId,
-                            passkey
-                        );
-                        break;
-                    }
-                    case "AuthorizeService": {
-                        // When a bluetooth peripheral requests for access to a specifc service, this gets called
-                        // Most modern bluetooth managers accept by default, so thats what we'll do.
-                        invocation.return_value(null);
-                        break;
-                    }
-                    case "Cancel": {
-                        invocation.return_value(null);
-                        break;
-                    }
-                    default:
-                        invocation.return_dbus_error(
-                            "org.freedesktop.DBus.Error.UnknownMethod",
-                            `Unknown method: ${methodName}`
-                        );
-                        break;
+                    this.emit("pin-display", devicePath, pincode);
+                    invocation.return_value(null);
+                    break;
                 }
-            } catch (error) {
-                invocation.return_dbus_error(
-                    "org.bluez.Error.Failed",
-                    `Agent error: ${error}`
-                );
-            }
-        };
+                case "DisplayPasskey": {
+                    const [devicePath, passkey] = parameters.deep_unpack() as [
+                        string,
+                        number
+                    ];
 
-        handleAsync();
+                    this.emit("passkey-display", devicePath, passkey);
+                    invocation.return_value(null);
+                    break;
+                }
+                case "RequestAuthorization": {
+                    const [devicePath] = parameters.deep_unpack() as [string];
+                    const requestId = `authorize-${Date.now()}`;
+
+                    this.pendingRequests.set(requestId, invocation);
+
+                    this.emit("authorization-request", devicePath, requestId);
+                    break;
+                }
+                case "RequestConfirmation": {
+                    const [devicePath, passkey] = parameters.deep_unpack() as [
+                        string,
+                        number
+                    ];
+                    const requestId = `confirm-${Date.now()}`;
+
+                    this.pendingRequests.set(requestId, invocation);
+
+                    this.emit(
+                        "confirmation-request",
+                        devicePath,
+                        requestId,
+                        passkey
+                    );
+                    break;
+                }
+                case "AuthorizeService": {
+                    // When a bluetooth peripheral requests for access to a specifc service, this gets called
+                    // Most modern bluetooth managers accept by default, so thats what we'll do.
+                    invocation.return_value(null);
+                    break;
+                }
+                case "Cancel": {
+                    invocation.return_value(null);
+                    break;
+                }
+                default:
+                    invocation.return_dbus_error(
+                        "org.freedesktop.DBus.Error.UnknownMethod",
+                        `Unknown method: ${methodName}`
+                    );
+                    break;
+            }
+        } catch (error) {
+            invocation.return_dbus_error(
+                "org.bluez.Error.Failed",
+                `Agent error: ${error}`
+            );
+        }
     }
 
     public confirmPairing(requestId: string): void {
@@ -272,5 +270,4 @@ export class BluetoothAgent extends GObject.Object {
             this.pendingRequests.delete(requestId);
         }
     }
-
 }
