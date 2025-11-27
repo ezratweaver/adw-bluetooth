@@ -143,9 +143,9 @@ export class IncomingTransferManager {
         );
         progressDialog.updateProgress(0, 1);
 
-        progressDialog.connect("cancelled", () => {
+        progressDialog.connect("cancelled", async () => {
             try {
-                bluetooth.obex?.cancelTransfer(transferPath);
+                await bluetooth.obex?.cancelTransfer(transferPath);
             } catch (error) {
                 log(`Failed to cancel incoming transfer: ${error}`);
             }

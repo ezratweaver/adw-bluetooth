@@ -65,7 +65,7 @@ export class ObexManager extends GObject.Object {
                     },
                 },
             },
-            this,
+            this
         );
     }
 
@@ -79,7 +79,7 @@ export class ObexManager extends GObject.Object {
             ORG_BLUEZ_OBEX,
             "/org/bluez/obex",
             OBEX_CLIENT_1,
-            null,
+            null
         );
 
         const agentXml = `
@@ -123,16 +123,16 @@ export class ObexManager extends GObject.Object {
                                 } else {
                                     reject(
                                         new Error(
-                                            "No sessionPath returned from session creation",
-                                        ),
+                                            "No sessionPath returned from session creation"
+                                        )
                                     );
                                 }
                             } catch (error) {
                                 reject(error);
                             }
-                        },
+                        }
                     );
-                },
+                }
             );
 
             const [sessionPath] = result.deep_unpack() as [string];
@@ -159,7 +159,7 @@ export class ObexManager extends GObject.Object {
                         } catch (error) {
                             reject(error);
                         }
-                    },
+                    }
                 );
             });
         } catch (error) {
@@ -170,7 +170,7 @@ export class ObexManager extends GObject.Object {
 
     private _setupTransferMonitoring(
         transferPath: string,
-        transferProxy: Gio.DBusProxy,
+        transferProxy: Gio.DBusProxy
     ): void {
         // Monitor transfer progress
         transferProxy.connect("g-properties-changed", (_, changed) => {
@@ -203,7 +203,7 @@ export class ObexManager extends GObject.Object {
 
     public async sendFileWithSession(
         sessionPath: string,
-        filePath: string,
+        filePath: string
     ): Promise<string | null> {
         try {
             const objectPushProxy = Gio.DBusProxy.new_sync(
@@ -213,7 +213,7 @@ export class ObexManager extends GObject.Object {
                 ORG_BLUEZ_OBEX,
                 sessionPath,
                 OBEX_OBJECT_PUSH_1,
-                null,
+                null
             );
 
             const result = await new Promise<any>((resolve, reject) => {
@@ -230,13 +230,13 @@ export class ObexManager extends GObject.Object {
                         } catch (error) {
                             reject(error);
                         }
-                    },
+                    }
                 );
             });
 
             const [transferPath] = result.deep_unpack() as [
                 string,
-                Record<string, GLib.Variant>,
+                Record<string, GLib.Variant>
             ];
 
             // Store transfer proxy for monitoring
@@ -247,7 +247,7 @@ export class ObexManager extends GObject.Object {
                 ORG_BLUEZ_OBEX,
                 transferPath,
                 OBEX_TRANSFER_1,
-                null,
+                null
             );
 
             this.activeTransfers.set(transferPath, transferProxy);
@@ -260,17 +260,27 @@ export class ObexManager extends GObject.Object {
         }
     }
 
-    public cancelTransfer(transferPath: string): void {
+    public async cancelTransfer(transferPath: string): Promise<void> {
         const transferProxy = this.activeTransfers.get(transferPath);
         if (transferProxy) {
             try {
-                transferProxy.call_sync(
-                    "Cancel",
-                    null,
-                    Gio.DBusCallFlags.NONE,
-                    -1,
-                    null,
-                );
+                await new Promise<void>((resolve, reject) => {
+                    transferProxy.call(
+                        "Cancel",
+                        null,
+                        Gio.DBusCallFlags.NONE,
+                        -1,
+                        null,
+                        (proxy, result) => {
+                            try {
+                                proxy?.call_finish(result);
+                                resolve();
+                            } catch (error) {
+                                reject(error);
+                            }
+                        }
+                    );
+                });
                 this.activeTransfers.delete(transferPath);
             } catch (error) {
                 log(`Failed to cancel transfer: ${error}`);
@@ -295,7 +305,7 @@ export class ObexManager extends GObject.Object {
                 agentInterface,
                 this._handleAgentMethodCall.bind(this),
                 null,
-                null,
+                null
             );
 
             sessionBus.call_sync(
@@ -307,7 +317,7 @@ export class ObexManager extends GObject.Object {
                 null,
                 Gio.DBusCallFlags.NONE,
                 -1,
-                null,
+                null
             );
         } catch (error) {
             if (this.registrationId) {
@@ -333,7 +343,7 @@ export class ObexManager extends GObject.Object {
                     null,
                     Gio.DBusCallFlags.NONE,
                     -1,
-                    null,
+                    null
                 );
             } catch (error) {
                 log(`Failed to unregister OBEX agent: ${error}`);
@@ -348,7 +358,7 @@ export class ObexManager extends GObject.Object {
         _3: string,
         methodName: string,
         parameters: GLib.Variant,
-        invocation: Gio.DBusMethodInvocation,
+        invocation: Gio.DBusMethodInvocation
     ): void {
         try {
             switch (methodName) {
@@ -367,7 +377,7 @@ export class ObexManager extends GObject.Object {
                         ORG_BLUEZ_OBEX,
                         transferPath,
                         OBEX_TRANSFER_1,
-                        null,
+                        null
                     );
 
                     const sizeVariant =
@@ -400,7 +410,7 @@ export class ObexManager extends GObject.Object {
                         requestId,
                         filename,
                         size.toString(),
-                        deviceAddress,
+                        deviceAddress
                     );
                     break;
                 }
@@ -416,7 +426,7 @@ export class ObexManager extends GObject.Object {
                 default:
                     invocation.return_dbus_error(
                         "org.freedesktop.DBus.Error.UnknownMethod",
-                        `Unknown method: ${methodName}`,
+                        `Unknown method: ${methodName}`
                     );
                     break;
             }
@@ -424,7 +434,7 @@ export class ObexManager extends GObject.Object {
             log(`Error occured handling agent method call: ${error}`);
             invocation.return_dbus_error(
                 "org.bluez.obex.Error.Failed",
-                `OBEX Agent error: ${error}`,
+                `OBEX Agent error: ${error}`
             );
         }
     }
@@ -436,20 +446,20 @@ export class ObexManager extends GObject.Object {
                 GLib.get_home_dir() + "/.cache/obexd/" + authData.filename;
 
             authData.invocation.return_value(
-                new GLib.Variant("(s)", [downloadsPath]),
+                new GLib.Variant("(s)", [downloadsPath])
             );
             this.pendingAuthorizations.delete(requestId);
 
             // Start monitoring the accepted transfer
             this._monitorIncomingTransfer(
                 authData.transferPath,
-                authData.transferProxy,
+                authData.transferProxy
             );
         }
     }
 
     private _getDeviceAddressFromTransfer(
-        transferProxy: Gio.DBusProxy,
+        transferProxy: Gio.DBusProxy
     ): string {
         try {
             // Get the session object path from the transfer
@@ -469,7 +479,7 @@ export class ObexManager extends GObject.Object {
                 ORG_BLUEZ_OBEX,
                 sessionPath,
                 "org.bluez.obex.Session1",
-                null,
+                null
             );
 
             // Get device address from session
@@ -487,7 +497,7 @@ export class ObexManager extends GObject.Object {
 
     private _monitorIncomingTransfer(
         transferPath: string,
-        transferProxy: Gio.DBusProxy,
+        transferProxy: Gio.DBusProxy
     ): void {
         try {
             this.activeTransfers.set(transferPath, transferProxy);
@@ -505,7 +515,7 @@ export class ObexManager extends GObject.Object {
                 "incoming-transfer-started",
                 transferPath,
                 filename,
-                deviceAddress,
+                deviceAddress
             );
         } catch (error) {
             log(`Failed to monitor incoming transfer: ${error}`);
@@ -517,7 +527,7 @@ export class ObexManager extends GObject.Object {
         if (authData) {
             authData.invocation.return_dbus_error(
                 "org.bluez.obex.Error.Rejected",
-                "File transfer rejected by user",
+                "File transfer rejected by user"
             );
             this.pendingAuthorizations.delete(requestId);
         }

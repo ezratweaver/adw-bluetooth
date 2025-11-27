@@ -288,10 +288,10 @@ export class DeviceDetailsModal extends Adw.Window {
             }
         };
 
-        progressDialog.connect("cancelled", () => {
+        progressDialog.connect("cancelled", async () => {
             if (transferPath) {
                 try {
-                    obex.cancelTransfer(transferPath);
+                    await obex.cancelTransfer(transferPath);
                 } catch (error) {
                     log(`Failed to cancel transfer: ${error}`);
                 }
