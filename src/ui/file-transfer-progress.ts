@@ -13,6 +13,8 @@ export class FileTransferProgressDialog extends Adw.Dialog {
     private _error_label!: Gtk.Label;
     private _error_icon!: Gtk.Image;
 
+    private _progress: number = 0;
+
     static {
         GObject.registerClass(
             {
@@ -34,7 +36,7 @@ export class FileTransferProgressDialog extends Adw.Dialog {
                     retry: {},
                 },
             },
-            this,
+            this
         );
     }
 
@@ -59,8 +61,8 @@ export class FileTransferProgressDialog extends Adw.Dialog {
     }
 
     public updateProgress(transferred: number, total: number): void {
-        const progress = transferred / total;
-        this._progress_bar.set_fraction(progress);
+        this._progress = transferred / total;
+        this._progress_bar.set_fraction(this._progress);
     }
 
     public updateFrom(fromName: string): void {
@@ -102,5 +104,9 @@ export class FileTransferProgressDialog extends Adw.Dialog {
         this._error_icon.remove_css_class("error");
 
         this._progress_bar.set_fraction(1.0);
+    }
+
+    public get progress(): number {
+        return this._progress;
     }
 }

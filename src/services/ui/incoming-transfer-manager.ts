@@ -26,15 +26,15 @@ export class IncomingTransferManager {
                 requestId: string,
                 filename: string,
                 size: string,
-                deviceAddress: string,
+                deviceAddress: string
             ) => {
                 this.showIncomingTransferRequest(
                     requestId,
                     filename,
                     size,
-                    deviceAddress,
+                    deviceAddress
                 );
-            },
+            }
         );
 
         bluetooth.obex.connect(
@@ -43,13 +43,13 @@ export class IncomingTransferManager {
                 _,
                 transferPath: string,
                 filename: string,
-                deviceAddress: string,
+                deviceAddress: string
             ) =>
                 this.showIncomingTransferDialog(
                     transferPath,
                     filename,
-                    deviceAddress,
-                ),
+                    deviceAddress
+                )
         );
 
         bluetooth.obex.connect(
@@ -60,10 +60,10 @@ export class IncomingTransferManager {
                     this.updateIncomingTransferProgress(
                         dialog,
                         transferred,
-                        total,
+                        total
                     );
                 }
-            },
+            }
         );
 
         bluetooth.obex.connect(
@@ -74,10 +74,10 @@ export class IncomingTransferManager {
                     this.onIncomingTransferCompleted(
                         dialog,
                         transferPath,
-                        filename,
+                        filename
                     );
                 }
-            },
+            }
         );
 
         bluetooth.obex.connect("transfer-failed", (_, transferPath: string) => {
@@ -92,7 +92,7 @@ export class IncomingTransferManager {
         requestId: string,
         filename: string,
         size: string,
-        deviceAddress: string,
+        deviceAddress: string
     ): void {
         const humanReadableSize = formatBytesToHumanReadable(parseInt(size));
 
@@ -131,7 +131,7 @@ export class IncomingTransferManager {
     private showIncomingTransferDialog(
         transferPath: string,
         filename: string,
-        deviceAddress: string,
+        deviceAddress: string
     ): void {
         // Find device by address to get the device name
         const device = findDeviceByAddress(deviceAddress);
@@ -139,17 +139,24 @@ export class IncomingTransferManager {
 
         const progressDialog = new FileTransferProgressDialog(
             deviceName,
-            "~/Downloads/" + filename,
+            "~/Downloads/" + filename
         );
         progressDialog.updateProgress(0, 1);
 
-        progressDialog.connect("cancelled", async () => {
+        const stopTransfer = async () => {
             try {
                 await bluetooth.obex?.cancelTransfer(transferPath);
             } catch (error) {
                 log(`Failed to cancel incoming transfer: ${error}`);
             }
             this.incomingTransfers.delete(transferPath);
+        };
+
+        progressDialog.connect("cancelled", stopTransfer);
+        progressDialog.connect("closed", () => {
+            if (progressDialog.progress >= 1) {
+                stopTransfer();
+            }
         });
 
         this.incomingTransfers.set(transferPath, progressDialog);
@@ -160,7 +167,7 @@ export class IncomingTransferManager {
     private updateIncomingTransferProgress(
         dialog: FileTransferProgressDialog,
         transferred: number,
-        total: number,
+        total: number
     ): void {
         dialog.updateProgress(transferred, total);
     }
@@ -168,7 +175,7 @@ export class IncomingTransferManager {
     private async onIncomingTransferCompleted(
         dialog: FileTransferProgressDialog,
         transferPath: string,
-        filename: string,
+        filename: string
     ): Promise<void> {
         this.incomingTransfers.delete(transferPath);
 
@@ -180,7 +187,7 @@ export class IncomingTransferManager {
 
     private onIncomingTransferFailed(
         dialog: FileTransferProgressDialog,
-        transferPath: string,
+        transferPath: string
     ): void {
         dialog.showError("File transfer failed");
         this.incomingTransfers.delete(transferPath);

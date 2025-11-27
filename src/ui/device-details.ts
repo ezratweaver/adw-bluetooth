@@ -288,7 +288,7 @@ export class DeviceDetailsModal extends Adw.Window {
             }
         };
 
-        progressDialog.connect("cancelled", async () => {
+        const stopTransfer = async () => {
             if (transferPath) {
                 try {
                     await obex.cancelTransfer(transferPath);
@@ -298,6 +298,13 @@ export class DeviceDetailsModal extends Adw.Window {
             }
             cleanupSignals();
             cleanupSession();
+        };
+
+        progressDialog.connect("cancelled", stopTransfer);
+        progressDialog.connect("closed", () => {
+            if (progressDialog.progress >= 1) {
+                stopTransfer();
+            }
         });
 
         progressDialog.connect("retry", () => processNextFile());
