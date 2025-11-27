@@ -11,7 +11,6 @@ export class BluetoothAgent extends GObject.Object {
     private agentNodeInfo: Gio.DBusNodeInfo;
     private registrationId: number | null = null;
     private pendingRequests: Map<string, Gio.DBusMethodInvocation> = new Map();
-    private agentBlocked: boolean = false;
 
     static {
         GObject.registerClass(
@@ -274,18 +273,4 @@ export class BluetoothAgent extends GObject.Object {
         }
     }
 
-    public get isAgentBlocked(): boolean {
-        return this.agentBlocked;
-    }
-
-    public blockAgent(): void {
-        if (this.agentBlocked) {
-            throw new Error("Another device is already pairing");
-        }
-        this.agentBlocked = true;
-    }
-
-    public freeAgent(): void {
-        this.agentBlocked = false;
-    }
 }

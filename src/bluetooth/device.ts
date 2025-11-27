@@ -13,15 +13,11 @@ export const BLUEZ_BATTERY_1 = "org.bluez.Battery1";
 
 interface DeviceProps {
     devicePath: string;
-    blockAgent: () => void;
-    freeAgent: () => void;
 }
 
 export class Device extends GObject.Object {
     private deviceProxy: Gio.DBusProxy;
     private batteryProxy: Gio.DBusProxy | null = null;
-    private blockAgent: () => void;
-    private freeAgent: () => void;
 
     private _devicePath: string;
     private _address: string | undefined;
@@ -160,8 +156,6 @@ export class Device extends GObject.Object {
             null
         );
 
-        this.blockAgent = props.blockAgent;
-        this.freeAgent = props.freeAgent;
 
         this._connectionCount = getDeviceConnectionCount(props.devicePath);
 
@@ -450,8 +444,6 @@ export class Device extends GObject.Object {
         if (this._connecting) return;
 
         try {
-            // Block agent from use with other devices until we're done pairing
-            this.blockAgent();
             this._setConnecting(true);
 
             await new Promise<void>((resolve, reject) => {
@@ -472,7 +464,6 @@ export class Device extends GObject.Object {
                 );
             });
         } finally {
-            this.freeAgent();
             this._setConnecting(false);
         }
     }
