@@ -11,7 +11,7 @@
 </p>
 </p>
 
-![adw-bluetooth](https://github.com/user-attachments/assets/67b1ae9d-0c9c-4a8b-8810-42c1d0ec1d9b)
+![adw-bluetooth-1-0-0](https://github.com/user-attachments/assets/4ebfe0a8-9296-4c2d-b216-183a1bc4f902)
 
 ## About This Project
 
