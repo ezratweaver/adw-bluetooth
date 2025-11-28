@@ -6,7 +6,7 @@
   Adwaita Bluetooth
 </h1>
 <p align="center">
-    A GNOME inspired Bluetooth device manager built with GTK4 and Libadwaita.
+    A fully featured GNOME inspired Bluetooth device manager built with GTK4 and Libadwaita.
     <br />
 </p>
 </p>
