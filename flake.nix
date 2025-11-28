@@ -13,7 +13,7 @@
       # ---- Buildable package ----
       packages.${system}.default = pkgs.stdenv.mkDerivation {
         pname = "adw-bluetooth";
-        version = "0.3.0";
+        version = "1.0.0";
         src = ./.;
 
         nativeBuildInputs = [
