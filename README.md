@@ -71,9 +71,11 @@ flatpak install --user <flatpak-file-name>.flatpak
 
 Download the Flatpak from [releases](https://github.com/ezratweaver/adwaita-bluetooth/releases).
 
-## Dependencies
+## Compiling from source
 
-### Using Nix (Recommended)
+### Dependencies
+
+#### Using Nix (Recommended)
 
 Enter the development environment with all dependencies:
 
@@ -81,7 +83,7 @@ Enter the development environment with all dependencies:
 nix develop
 ```
 
-### Arch
+#### Arch
 
 Install dependencies:
 
