@@ -41,7 +41,15 @@ A fully featured bluetooth device manager built for tiling window managers like 
 yay -S adw-bluetooth
 ```
 
-### NixOS (Flake only)
+### NixOS (available on unstable)
+
+```nix
+environment.systemPackages = with pkgs; [
+  adw-bluetooth
+];
+```
+
+### NixOS (via flake)
 
 Add input to the flake:
 
@@ -63,9 +71,11 @@ flatpak install --user <flatpak-file-name>.flatpak
 
 Download the Flatpak from [releases](https://github.com/ezratweaver/adwaita-bluetooth/releases).
 
-## Dependencies
+## Compiling from source
 
-### Using Nix (Recommended)
+### Dependencies
+
+#### Using Nix (Recommended)
 
 Enter the development environment with all dependencies:
 
@@ -73,7 +83,7 @@ Enter the development environment with all dependencies:
 nix develop
 ```
 
-### Arch
+#### Arch
 
 Install dependencies:
 
