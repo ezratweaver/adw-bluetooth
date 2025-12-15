@@ -56,7 +56,7 @@ export class Window extends Adw.ApplicationWindow {
                     "adapter-list",
                 ],
             },
-            this
+            this,
         );
 
         // Window shortcuts
@@ -64,14 +64,14 @@ export class Window extends Adw.ApplicationWindow {
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "window.close" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("<Control>w"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "window.close" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("Escape"),
-            })
+            }),
         );
 
         // Vim-style and arrow key navigation shortcuts
@@ -79,56 +79,56 @@ export class Window extends Adw.ApplicationWindow {
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-down" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("j"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-down" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("Down"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-up" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("k"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-up" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("Up"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-select" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("Return"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-select" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("space"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-first" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("g"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-last" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("<Shift>g"),
-            })
+            }),
         );
 
         Gtk.Widget.add_shortcut(
@@ -137,7 +137,7 @@ export class Window extends Adw.ApplicationWindow {
                     action_name: "win.toggle-discovery",
                 }),
                 trigger: Gtk.ShortcutTrigger.parse_string("d"),
-            })
+            }),
         );
 
         // Show shortcuts window
@@ -147,7 +147,7 @@ export class Window extends Adw.ApplicationWindow {
                     action_name: "win.show-help-overlay",
                 }),
                 trigger: Gtk.ShortcutTrigger.parse_string("<Primary>question"),
-            })
+            }),
         );
     }
 
@@ -160,7 +160,7 @@ export class Window extends Adw.ApplicationWindow {
         this._setupButtonEvents();
 
         this._incomingTransferManager = new IncomingTransferManager(
-            this._showToast.bind(this)
+            this._showToast.bind(this),
         );
     }
 
@@ -212,7 +212,7 @@ export class Window extends Adw.ApplicationWindow {
     private _showNoAdapterState(): void {
         this._disabled_header_label.set_label("No Bluetooth Adapter");
         this._disabled_description_label.set_label(
-            "Ensure BlueZ is configured correctly and try again."
+            "Ensure BlueZ is configured correctly and try again.",
         );
         this._disabled_state.set_visible(true);
         this._enabled_state.set_visible(false);
@@ -268,7 +268,7 @@ export class Window extends Adw.ApplicationWindow {
     private _setupAdapterSubMenu() {
         // Sort adapters by adapter name (hci0, hci1, etc.)
         const sortedAdapterPaths = Array.from(
-            bluetooth.adapterAliases.keys()
+            bluetooth.adapterAliases.keys(),
         ).sort((pathA, pathB) => {
             const nameA = pathA.split("/").slice(-1)[0];
             const nameB = pathB.split("/").slice(-1)[0];
@@ -303,7 +303,7 @@ export class Window extends Adw.ApplicationWindow {
                         const otherName = otherPath.split("/").slice(-1)[0];
 
                         const otherAction = this.lookup_action(
-                            `adapter-${otherName}`
+                            `adapter-${otherName}`,
                         ) as Gio.SimpleAction;
 
                         if (otherAction && otherPath !== adapterPath) {
@@ -325,7 +325,7 @@ export class Window extends Adw.ApplicationWindow {
             menuItem.set_label(displayName);
             menuItem.set_action_and_target_value(
                 `win.adapter-${adapterName}`,
-                null
+                null,
             );
 
             this._adapter_list.append_item(menuItem);
@@ -339,14 +339,14 @@ export class Window extends Adw.ApplicationWindow {
             "powered",
             this._bluetooth_toggle,
             "active",
-            GObject.BindingFlags.SYNC_CREATE
+            GObject.BindingFlags.SYNC_CREATE,
         );
 
         bluetooth.adapter.bind_property(
             "discovering",
             this._discovering_spinner,
             "visible",
-            GObject.BindingFlags.SYNC_CREATE
+            GObject.BindingFlags.SYNC_CREATE,
         );
     }
 
@@ -362,13 +362,13 @@ export class Window extends Adw.ApplicationWindow {
                 const setSwitchState = (state: boolean) => {
                     GObject.signal_handler_block(
                         this._bluetooth_toggle,
-                        bluetoothToggleHandlerId
+                        bluetoothToggleHandlerId,
                     );
                     this._bluetooth_toggle.set_active(state);
                     this._bluetooth_toggle.set_state(state);
                     GObject.signal_handler_unblock(
                         this._bluetooth_toggle,
-                        bluetoothToggleHandlerId
+                        bluetoothToggleHandlerId,
                     );
                 };
 
@@ -390,10 +390,10 @@ export class Window extends Adw.ApplicationWindow {
                                 bluetooth.adapter?.startDiscovery();
                             } catch (error) {
                                 log(
-                                    `Failed to start discovery on power on: ${error}`
+                                    `Failed to start discovery on power on: ${error}`,
                                 );
                                 this._showToast(
-                                    "Failed to start device discovery"
+                                    "Failed to start device discovery",
                                 );
                             }
                         }
@@ -412,7 +412,7 @@ export class Window extends Adw.ApplicationWindow {
                     });
 
                 return true;
-            }
+            },
         );
     }
 
@@ -421,35 +421,35 @@ export class Window extends Adw.ApplicationWindow {
 
         // Adapter listeners
         bluetooth.adapter.connect("device-added", (_, devicePath: string) =>
-            this._addDevice(devicePath)
+            this._addDevice(devicePath),
         );
         bluetooth.adapter.connect("device-removed", (_, devicePath: string) =>
-            this._removeDevice(devicePath)
+            this._removeDevice(devicePath),
         );
 
         // Agent event listeners
         bluetooth.adapter.bluetoothAgent.connect(
             "confirmation-request",
             (_, devicePath: string, requestId: string, passkey: number) =>
-                this._showConfirmationDialog(devicePath, requestId, passkey)
+                this._showConfirmationDialog(devicePath, requestId, passkey),
         );
 
         bluetooth.adapter.bluetoothAgent.connect(
             "authorization-request",
             (_, devicePath: string, requestId: string) =>
-                this._showAuthorizationDialog(devicePath, requestId)
+                this._showAuthorizationDialog(devicePath, requestId),
         );
 
         bluetooth.adapter.bluetoothAgent.connect(
             "pin-display",
             (_, devicePath: string, pincode: string) =>
-                this._showPinDisplayDialog(devicePath, pincode)
+                this._showPinDisplayDialog(devicePath, pincode),
         );
 
         bluetooth.adapter.bluetoothAgent.connect(
             "passkey-display",
             (_, devicePath: string, passkey: number) =>
-                this._showPasskeyDisplayDialog(devicePath, passkey)
+                this._showPasskeyDisplayDialog(devicePath, passkey),
         );
     }
 
@@ -513,7 +513,7 @@ export class Window extends Adw.ApplicationWindow {
         });
 
         bluetooth.adapter.devices.forEach(({ devicePath }) =>
-            this._addDevice(devicePath)
+            this._addDevice(devicePath),
         );
     }
 
@@ -545,7 +545,7 @@ export class Window extends Adw.ApplicationWindow {
             "connecting",
             spinner,
             "visible",
-            GObject.BindingFlags.SYNC_CREATE
+            GObject.BindingFlags.SYNC_CREATE,
         );
 
         device.bind_property(
@@ -553,7 +553,7 @@ export class Window extends Adw.ApplicationWindow {
             statusLabel,
             "visible",
             GObject.BindingFlags.SYNC_CREATE |
-                GObject.BindingFlags.INVERT_BOOLEAN
+                GObject.BindingFlags.INVERT_BOOLEAN,
         );
 
         return { row, spinner, statusLabel };
@@ -584,13 +584,13 @@ export class Window extends Adw.ApplicationWindow {
     private _showConfirmationDialog(
         devicePath: string,
         requestId: string,
-        passkey: number
+        passkey: number,
     ) {
         const device = findDeviceByPath(devicePath);
 
         const dialog = new PinConfirmationDialog(
             device?.alias ?? "Unknown Device",
-            formatPin(passkey)
+            formatPin(passkey),
         );
 
         dialog.connect("confirmed", () => {
@@ -622,11 +622,11 @@ export class Window extends Adw.ApplicationWindow {
         dialog.connect("response", (_, response: string) => {
             if (response === "allow") {
                 bluetooth.adapter?.bluetoothAgent.confirmAuthorization(
-                    requestId
+                    requestId,
                 );
             } else {
                 bluetooth.adapter?.bluetoothAgent.cancelAuthorization(
-                    requestId
+                    requestId,
                 );
             }
         });
@@ -641,7 +641,7 @@ export class Window extends Adw.ApplicationWindow {
         const dialog = new PinConfirmationDialog(
             device?.alias ?? "Unknown Device",
             pincode,
-            true
+            true,
         );
 
         displayDialogAsTopLevel(dialog);
@@ -654,7 +654,7 @@ export class Window extends Adw.ApplicationWindow {
         const dialog = new PinConfirmationDialog(
             device?.alias ?? "Unknown Device",
             formatPin(passkey),
-            true
+            true,
         );
 
         displayDialogAsTopLevel(dialog);
@@ -722,9 +722,11 @@ export class Window extends Adw.ApplicationWindow {
 
     private async _handleDeviceAction(device: Device) {
         try {
+            // Keep track of how many devices are being paired at once
             this._activePairingCount++;
 
             if (!device.paired) {
+                // If this is the first device we are pairing, stop discovery.
                 if (this._activePairingCount === 1) {
                     log(`Stopping discovery for pairing with ${device.alias}`);
                     bluetooth.adapter?.stopDiscovery();
@@ -748,7 +750,7 @@ export class Window extends Adw.ApplicationWindow {
             if (this._activePairingCount === 0) {
                 try {
                     log(
-                        `Restarting discovery after successful pairing/connection`
+                        `Restarting discovery after successful pairing/connection`,
                     );
                     bluetooth.adapter?.startDiscovery();
                 } catch (error) {
@@ -764,7 +766,7 @@ export class Window extends Adw.ApplicationWindow {
             ) {
                 try {
                     log(
-                        `Restarting discovery after pairing failure for ${device.alias}`
+                        `Restarting discovery after pairing failure for ${device.alias}`,
                     );
                     bluetooth.adapter?.startDiscovery();
                 } catch (error) {
@@ -775,8 +777,8 @@ export class Window extends Adw.ApplicationWindow {
             const action = !device.paired
                 ? "pair with"
                 : device.connected
-                ? "disconnect from"
-                : "connect to";
+                  ? "disconnect from"
+                  : "connect to";
 
             log(`An error occurred while trying to ${action} device: ${error}`);
 
@@ -811,7 +813,7 @@ export class Window extends Adw.ApplicationWindow {
         // Vim-style navigation actions
         const vimDownAction = new Gio.SimpleAction({ name: "vim-down" });
         vimDownAction.connect("activate", () =>
-            this._vimNavigator.navigateDown()
+            this._vimNavigator.navigateDown(),
         );
         this.add_action(vimDownAction);
 
@@ -821,19 +823,19 @@ export class Window extends Adw.ApplicationWindow {
 
         const vimSelectAction = new Gio.SimpleAction({ name: "vim-select" });
         vimSelectAction.connect("activate", () =>
-            this._vimNavigator.selectCurrent()
+            this._vimNavigator.selectCurrent(),
         );
         this.add_action(vimSelectAction);
 
         const vimFirstAction = new Gio.SimpleAction({ name: "vim-first" });
         vimFirstAction.connect("activate", () =>
-            this._vimNavigator.navigateFirst()
+            this._vimNavigator.navigateFirst(),
         );
         this.add_action(vimFirstAction);
 
         const vimLastAction = new Gio.SimpleAction({ name: "vim-last" });
         vimLastAction.connect("activate", () =>
-            this._vimNavigator.navigateLast()
+            this._vimNavigator.navigateLast(),
         );
         this.add_action(vimLastAction);
     }
