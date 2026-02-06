@@ -25,7 +25,7 @@ export class Window extends Adw.ApplicationWindow {
     private _toast_overlay!: Adw.ToastOverlay;
     private _adapter_list!: Gio.Menu;
 
-    private _deviceElements: Map<
+    private _deviceElementsMap: Map<
         string,
         {
             row: Adw.ActionRow;
@@ -195,13 +195,13 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _clearDeviceList(): void {
-        this._deviceElements.forEach((elements) => {
+        this._deviceElementsMap.forEach((elements) => {
             const parent = elements.row.get_parent();
             if (parent === this._devices_list) {
                 this._devices_list.remove(elements.row);
             }
         });
-        this._deviceElements.clear();
+        this._deviceElementsMap.clear();
     }
 
     private _resetWindow(): void {
@@ -416,13 +416,35 @@ export class Window extends Adw.ApplicationWindow {
         );
     }
 
+    private _deviceAddBuffer: string[] = [];
+    private _deviceAddIdleId = 0;
+
     private _setupEventHandlers(): void {
         if (!bluetooth.adapter) return;
 
         // Adapter listeners
-        bluetooth.adapter.connect("device-added", (_, devicePath: string) =>
-            this._addDevice(devicePath),
-        );
+
+        // Add a buffer for adding new devices to the UI, to not block the main thread
+        bluetooth.adapter.connect("device-added", (_, devicePath: string) => {
+            this._deviceAddBuffer.push(devicePath);
+
+            // If we havent scheduled an update yet, do it
+            if (this._deviceAddIdleId === 0) {
+                this._deviceAddIdleId = GLib.idle_add(
+                    GLib.PRIORITY_DEFAULT_IDLE,
+                    () => {
+                        this._deviceAddBuffer.forEach((devicePath) =>
+                            this._addDevice(devicePath),
+                        );
+
+                        this._deviceAddBuffer = [];
+                        this._deviceAddIdleId = 0;
+                        return GLib.SOURCE_REMOVE;
+                    },
+                );
+            }
+        });
+
         bluetooth.adapter.connect("device-removed", (_, devicePath: string) =>
             this._removeDevice(devicePath),
         );
@@ -674,7 +696,7 @@ export class Window extends Adw.ApplicationWindow {
 
         const { row, spinner, statusLabel } = this._createDeviceRow(device);
 
-        this._deviceElements.set(device.devicePath, {
+        this._deviceElementsMap.set(device.devicePath, {
             row,
             spinner,
             statusLabel,
@@ -703,7 +725,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _removeDevice(devicePath: string) {
-        const elements = this._deviceElements.get(devicePath);
+        const elements = this._deviceElementsMap.get(devicePath);
 
         if (elements) {
             // Check if the row is actually a child before removing
@@ -716,7 +738,7 @@ export class Window extends Adw.ApplicationWindow {
                 }
             }
 
-            this._deviceElements.delete(devicePath);
+            this._deviceElementsMap.delete(devicePath);
         }
     }
 
