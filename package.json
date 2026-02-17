@@ -2,7 +2,7 @@
     "name": "adw-bluetooth",
     "version": "1.0.0",
     "description": "Template for writing GNOME applications in TypeScript",
-    "main": "src/main.ts",
+    "main": "gui/main.ts",
     "repository": "https://github.com/ezratweaver/adw-bluetooth",
     "author": "Ezra <ezratweaver@gmail.com>",
     "license": "MIT",

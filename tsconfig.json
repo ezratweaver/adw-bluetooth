@@ -74,9 +74,9 @@
     "include": [
         "gi-types/gi.d.ts",
         "types/ambient.d.ts",
-        "src/*",
-        "src/ui/*",
-        "src/services/*",
-        "src/bluetooth/*"
+        "gui/*",
+        "gui/ui/*",
+        "gui/services/*",
+        "gui/bluetooth/*"
     ]
 }

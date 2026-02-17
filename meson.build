@@ -14,7 +14,7 @@ gjs_console = gjs_dep.get_variable(pkgconfig: 'gjs_console')
 tsc = find_program('tsc', required: true)
 
 subdir('data')
-subdir('src')
+subdir('gui')
 
 gnome.post_install(
   glib_compile_schemas: true,
