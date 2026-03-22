@@ -38,6 +38,13 @@ var ServiceNode = &introspect.Node{
 						{Name: "entered", Type: "q", Direction: "out"},
 					},
 				},
+				{
+					Name: "RequestConfirmation",
+					Args: []introspect.Arg{
+						{Name: "device", Type: "o", Direction: "out"},
+						{Name: "passkey", Type: "u", Direction: "out"},
+					},
+				},
 			},
 		},
 	},
@@ -50,11 +57,22 @@ func main() {
 	defer connection.SessConnection.Close()
 
 	/*
+	* Register Bluetooth / OBEX agents
+	 */
+	bluezObject := connection.SysConnection.Object(config.BluezService, config.BluezObjectPath)
+
+	err := agents.RegisterBluetoothAgent(bluezObject)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
+		os.Exit(1)
+	}
+
+	/*
 	* Create and register daemon as DBus service
 	 */
 	daemon := &service.AdwBluetoothDaemon{}
 
-	err := connection.SessConnection.Export(daemon, config.ObjectPath, config.Iface)
+	err = connection.SessConnection.Export(daemon, config.ObjectPath, config.Iface)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to export service to session bus:", err)
 		os.Exit(1)
@@ -71,17 +89,6 @@ func main() {
 	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
 		log.Fatalf("Name already taken: %s", config.ServiceName)
-	}
-
-	/*
-	* Register Bluetooth / OBEX agents
-	 */
-	bluezObject := connection.SysConnection.Object(config.BluezService, config.BluezObjectPath)
-
-	err = agents.RegisterBluetoothAgent(bluezObject)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
-		os.Exit(1)
 	}
 
 	/*

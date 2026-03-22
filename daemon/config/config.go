@@ -7,4 +7,6 @@ const (
 	ServiceName = "com.ezratweaver.AdwBluetoothDaemon"
 	ObjectPath  = "/com/ezratweaver/AdwBluetoothDaemon"
 	Iface       = "com.ezratweaver.AdwBluetoothDaemon"
+
+	BluezRejectedError = "org.bluez.Error.Rejected"
 )

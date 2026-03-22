@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"github.com/ezratweaver/adw-bluetooth/daemon/config"
 	"github.com/ezratweaver/adw-bluetooth/daemon/connection"
 	"github.com/godbus/dbus/v5"
 )
@@ -11,6 +12,7 @@ const (
 )
 
 type BluetoothAgent struct {
+	ConfirmChannel chan bool
 }
 
 func (agent *BluetoothAgent) DisplayPinCode(device dbus.ObjectPath, pincode string) *dbus.Error {
@@ -24,6 +26,18 @@ func (agent *BluetoothAgent) DisplayPasskey(device dbus.ObjectPath, passkey uint
 }
 
 func (agent *BluetoothAgent) RequestConfirmation(device dbus.ObjectPath, passkey uint32) *dbus.Error {
+	agent.ConfirmChannel = make(chan bool, 1)
+
+	connection.EmitDaemonSignal("RequestConfirmation", device, passkey)
+
+	accepted := <-agent.ConfirmChannel // wait for response
+
+	agent.ConfirmChannel = nil // reset back to nil
+
+	if !accepted {
+		return dbus.NewError(config.BluezRejectedError, nil)
+	}
+
 	return nil
 }
 
@@ -38,14 +52,18 @@ func (agent *BluetoothAgent) AuthorizeService(device dbus.ObjectPath, uuid strin
 }
 
 func (agent *BluetoothAgent) Cancel() *dbus.Error {
-	// Always going to return nil
+	if agent.ConfirmChannel != nil {
+		agent.ConfirmChannel <- false // cancel confirm if we're waiting on it
+	}
 	return nil
 }
 
-func RegisterBluetoothAgent(bluezObject dbus.BusObject) error {
-	bluetoothAgent := &BluetoothAgent{}
+var ActiveBluetoothAgent *BluetoothAgent
 
-	err := connection.SysConnection.Export(bluetoothAgent, agentPath, agentInterface)
+func RegisterBluetoothAgent(bluezObject dbus.BusObject) error {
+	ActiveBluetoothAgent = &BluetoothAgent{}
+
+	err := connection.SysConnection.Export(ActiveBluetoothAgent, agentPath, agentInterface)
 	if err != nil {
 		return err
 

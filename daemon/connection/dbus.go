@@ -34,5 +34,5 @@ func SetupDBusConnections() {
 }
 
 func EmitDaemonSignal(signalName string, values ...any) {
-	SessConnection.Emit(config.ObjectPath, config.ServiceName+"."+signalName, values)
+	SessConnection.Emit(config.ObjectPath, config.Iface+"."+signalName, values...)
 }
