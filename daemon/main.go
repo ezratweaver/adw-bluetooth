@@ -18,6 +18,17 @@ const (
 	Iface       = "com.ezratweaver.AdwBluetoothDaemon"
 )
 
+var ServiceNode = &introspect.Node{
+	Name: ObjectPath,
+	Interfaces: []introspect.Interface{
+		introspect.IntrospectData,
+		{
+			Name:    Iface,
+			Methods: introspect.Methods(new(service.AdwBluetoothDaemon)),
+		},
+	},
+}
+
 func main() {
 	sysConnection, err := dbus.ConnectSystemBus()
 	if err != nil {
