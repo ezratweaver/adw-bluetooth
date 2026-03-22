@@ -11,6 +11,8 @@ import (
 var (
 	SysConnection  *dbus.Conn
 	SessConnection *dbus.Conn
+
+	BluezObject dbus.BusObject
 )
 
 func SetupDBusConnections() {
@@ -31,6 +33,9 @@ func SetupDBusConnections() {
 		os.Exit(1)
 	}
 
+}
+func SetupBluezObject() {
+	BluezObject = SysConnection.Object(config.BluezService, config.BluezObjectPath)
 }
 
 func EmitDaemonSignal(signalName string, values ...any) {

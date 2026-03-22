@@ -79,7 +79,7 @@ func (agent *BluetoothAgent) Cancel() *dbus.Error {
 
 var CurrBluetoothAgent *BluetoothAgent
 
-func RegisterBluetoothAgent(bluezObject dbus.BusObject) error {
+func RegisterBluetoothAgent() error {
 	CurrBluetoothAgent = &BluetoothAgent{}
 
 	err := connection.SysConnection.Export(CurrBluetoothAgent, agentPath, agentInterface)
@@ -87,18 +87,18 @@ func RegisterBluetoothAgent(bluezObject dbus.BusObject) error {
 		return err
 
 	}
-	err = bluezObject.Call("org.bluez.AgentManager1.RegisterAgent", 0, agentPath, "DisplayYesNo").Err
+	err = connection.BluezObject.Call("org.bluez.AgentManager1.RegisterAgent", 0, agentPath, "DisplayYesNo").Err
 	if err != nil {
 		return err
 	}
 
-	err = bluezObject.Call("org.bluez.AgentManager1.RequestDefaultAgent", 0, agentPath).Err
+	err = connection.BluezObject.Call("org.bluez.AgentManager1.RequestDefaultAgent", 0, agentPath).Err
 
 	return err
 }
 
-func UnregisterBluetoothAgent(bluezObject dbus.BusObject) error {
-	err := bluezObject.Call("org.bluez.AgentManager1.UnregisterAgent", 0, agentPath).Err
+func UnregisterBluetoothAgent() error {
+	err := connection.BluezObject.Call("org.bluez.AgentManager1.UnregisterAgent", 0, agentPath).Err
 
 	return err
 }

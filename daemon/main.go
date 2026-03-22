@@ -51,34 +51,31 @@ var ServiceNode = &introspect.Node{
 						{Name: "device", Type: "o", Direction: "out"},
 					},
 				},
+				{
+					Name: "DeviceAdded",
+					Args: []introspect.Arg{
+						{Name: "device", Type: "(osssbbbusan)", Direction: "out"},
+					},
+				},
+				{
+					Name: "DeviceRemoved",
+					Args: []introspect.Arg{
+						{Name: "path", Type: "o", Direction: "out"},
+					},
+				},
+				{
+					Name: "DeviceUpdated",
+					Args: []introspect.Arg{
+						{Name: "device", Type: "(osssbbbusan)", Direction: "out"},
+					},
+				},
 			},
 		},
 	},
 }
 
-func main() {
-	connection.SetupDBusConnections()
-
-	defer connection.SysConnection.Close()
-	defer connection.SessConnection.Close()
-
-	/*
-	* Register Bluetooth / OBEX agents
-	 */
-	bluezObject := connection.SysConnection.Object(config.BluezService, config.BluezObjectPath)
-
-	err := agents.RegisterBluetoothAgent(bluezObject)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
-		os.Exit(1)
-	}
-
-	/*
-	* Create and register daemon as DBus service
-	 */
-	daemon := &service.AdwBluetoothDaemon{}
-
-	err = connection.SessConnection.Export(daemon, config.ObjectPath, config.Iface)
+func registerDaemonOnDBus(daemon *service.AdwBluetoothDaemon) {
+	err := connection.SessConnection.Export(daemon, config.ObjectPath, config.Iface)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to export service to session bus:", err)
 		os.Exit(1)
@@ -96,6 +93,31 @@ func main() {
 	if reply != dbus.RequestNameReplyPrimaryOwner {
 		log.Fatalf("Name already taken: %s", config.ServiceName)
 	}
+}
+
+func main() {
+	connection.SetupDBusConnections()
+
+	defer connection.SysConnection.Close()
+	defer connection.SessConnection.Close()
+
+	connection.SetupBluezObject()
+
+	/*
+	* Register Bluetooth / OBEX agents
+	 */
+	err := agents.RegisterBluetoothAgent()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
+		os.Exit(1)
+	}
+
+	/*
+	* Create and register daemon as DBus service
+	 */
+	daemon := service.NewAdwBluetoothDaemon()
+
+	registerDaemonOnDBus(daemon)
 
 	/*
 	* Idle and wait for DBus calls
@@ -108,7 +130,7 @@ func main() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 
-	err = agents.UnregisterBluetoothAgent(bluezObject)
+	err = agents.UnregisterBluetoothAgent()
 	if err != nil {
 		log.Printf("Failed to unregister Bluetooth agent: %v", err)
 	}
