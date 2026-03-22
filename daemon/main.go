@@ -52,22 +52,11 @@ func main() {
 	defer sessConnection.Close()
 
 	/*
-	* Register Bluetooth / OBEX agents
-	 */
-	bluezObject := sysConnection.Object(BluezService, BluezObjectPath)
-
-	err = agents.RegisterBluetoothAgent(bluezObject, sysConnection)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
-		os.Exit(1)
-	}
-
-	/*
 	* Create and register daemon as DBus service
 	 */
-	svc := &service.AdwBluetoothDaemon{SysConnection: sysConnection}
+	daemon := &service.AdwBluetoothDaemon{SysConnection: sysConnection}
 
-	err = sessConnection.Export(svc, ObjectPath, Iface)
+	err = sessConnection.Export(daemon, ObjectPath, Iface)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to export service to session bus:", err)
 		os.Exit(1)
@@ -84,6 +73,17 @@ func main() {
 	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
 		log.Fatalf("Name already taken: %s", ServiceName)
+	}
+
+	/*
+	* Register Bluetooth / OBEX agents
+	 */
+	bluezObject := sysConnection.Object(BluezService, BluezObjectPath)
+
+	err = agents.RegisterBluetoothAgent(bluezObject, sysConnection)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
+		os.Exit(1)
 	}
 
 	/*
