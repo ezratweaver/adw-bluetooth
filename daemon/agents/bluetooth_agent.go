@@ -12,7 +12,8 @@ const (
 )
 
 type BluetoothAgent struct {
-	ConfirmChannel chan bool
+	RequestConfirmChannel       chan bool
+	RequestAuthorizationChannel chan bool
 }
 
 func (agent *BluetoothAgent) DisplayPinCode(device dbus.ObjectPath, pincode string) *dbus.Error {
@@ -25,14 +26,15 @@ func (agent *BluetoothAgent) DisplayPasskey(device dbus.ObjectPath, passkey uint
 	return nil
 }
 
+// emits a signal, waits for ConfirmRequest, on the AdwBluetoothDaemon to be called
 func (agent *BluetoothAgent) RequestConfirmation(device dbus.ObjectPath, passkey uint32) *dbus.Error {
-	agent.ConfirmChannel = make(chan bool, 1)
+	agent.RequestConfirmChannel = make(chan bool, 1)
 
 	connection.EmitDaemonSignal("RequestConfirmation", device, passkey)
 
-	accepted := <-agent.ConfirmChannel // wait for response
+	accepted := <-agent.RequestConfirmChannel // wait for response
 
-	agent.ConfirmChannel = nil // reset back to nil
+	agent.RequestConfirmChannel = nil // reset back to nil
 
 	if !accepted {
 		return dbus.NewError(config.BluezRejectedError, nil)
@@ -41,7 +43,20 @@ func (agent *BluetoothAgent) RequestConfirmation(device dbus.ObjectPath, passkey
 	return nil
 }
 
+// emits a signal, waits for ConfirmAuthorization, on the AdwBluetoothDaemon to be called
 func (agent *BluetoothAgent) RequestAuthorization(device dbus.ObjectPath) *dbus.Error {
+	agent.RequestAuthorizationChannel = make(chan bool, 1)
+
+	connection.EmitDaemonSignal("RequestAuthorization", device)
+
+	accepted := <-agent.RequestAuthorizationChannel
+
+	agent.RequestAuthorizationChannel = nil
+
+	if !accepted {
+		return dbus.NewError(config.BluezRejectedError, nil)
+	}
+
 	return nil
 }
 
@@ -52,18 +67,22 @@ func (agent *BluetoothAgent) AuthorizeService(device dbus.ObjectPath, uuid strin
 }
 
 func (agent *BluetoothAgent) Cancel() *dbus.Error {
-	if agent.ConfirmChannel != nil {
-		agent.ConfirmChannel <- false // cancel confirm if we're waiting on it
+	if agent.RequestConfirmChannel != nil {
+		agent.RequestConfirmChannel <- false // cancel confirm if we're waiting on it
 	}
+	if agent.RequestAuthorizationChannel != nil {
+		agent.RequestAuthorizationChannel <- false
+	}
+
 	return nil
 }
 
-var ActiveBluetoothAgent *BluetoothAgent
+var CurrBluetoothAgent *BluetoothAgent
 
 func RegisterBluetoothAgent(bluezObject dbus.BusObject) error {
-	ActiveBluetoothAgent = &BluetoothAgent{}
+	CurrBluetoothAgent = &BluetoothAgent{}
 
-	err := connection.SysConnection.Export(ActiveBluetoothAgent, agentPath, agentInterface)
+	err := connection.SysConnection.Export(CurrBluetoothAgent, agentPath, agentInterface)
 	if err != nil {
 		return err
 

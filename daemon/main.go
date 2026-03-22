@@ -45,6 +45,12 @@ var ServiceNode = &introspect.Node{
 						{Name: "passkey", Type: "u", Direction: "out"},
 					},
 				},
+				{
+					Name: "RequestAuthorization",
+					Args: []introspect.Arg{
+						{Name: "device", Type: "o", Direction: "out"},
+					},
+				},
 			},
 		},
 	},

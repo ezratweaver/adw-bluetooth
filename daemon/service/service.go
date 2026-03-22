@@ -9,8 +9,16 @@ type AdwBluetoothDaemon struct {
 }
 
 func (daemon *AdwBluetoothDaemon) ConfirmRequest(accepted bool) *dbus.Error {
-	if agents.ActiveBluetoothAgent.ConfirmChannel != nil {
-		agents.ActiveBluetoothAgent.ConfirmChannel <- accepted
+	if agents.CurrBluetoothAgent.RequestConfirmChannel != nil {
+		agents.CurrBluetoothAgent.RequestConfirmChannel <- accepted
+	}
+
+	return nil
+}
+
+func (daemon *AdwBluetoothDaemon) ConfirmAuthorization(accepted bool) *dbus.Error {
+	if agents.CurrBluetoothAgent.RequestAuthorizationChannel != nil {
+		agents.CurrBluetoothAgent.RequestAuthorizationChannel <- accepted
 	}
 
 	return nil
