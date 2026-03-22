@@ -9,18 +9,18 @@ import (
 
 	"github.com/ezratweaver/adw-bluetooth/daemon/agents"
 	"github.com/ezratweaver/adw-bluetooth/daemon/connection"
+	"github.com/ezratweaver/adw-bluetooth/daemon/constants"
 	"github.com/ezratweaver/adw-bluetooth/daemon/service"
-	"github.com/ezratweaver/adw-bluetooth/daemon/shared"
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
 )
 
 var ServiceNode = &introspect.Node{
-	Name: shared.ObjectPath,
+	Name: constants.ObjectPath,
 	Interfaces: []introspect.Interface{
 		introspect.IntrospectData,
 		{
-			Name:    shared.Iface,
+			Name:    constants.Iface,
 			Methods: introspect.Methods(new(service.AdwBluetoothDaemon)),
 		},
 	},
@@ -34,29 +34,29 @@ func main() {
 	 */
 	daemon := &service.AdwBluetoothDaemon{}
 
-	err := connection.SessConnection.Export(daemon, shared.ObjectPath, shared.Iface)
+	err := connection.SessConnection.Export(daemon, constants.ObjectPath, constants.Iface)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to export service to session bus:", err)
 		os.Exit(1)
 	}
 
-	err = connection.SessConnection.Export(introspect.NewIntrospectable(ServiceNode), shared.ObjectPath, "org.freedesktop.DBus.Introspectable")
+	err = connection.SessConnection.Export(introspect.NewIntrospectable(ServiceNode), constants.ObjectPath, "org.freedesktop.DBus.Introspectable")
 	if err != nil {
 		log.Fatalf("Failed to export introspection: %v", err)
 	}
 
-	reply, err := connection.SessConnection.RequestName(shared.ServiceName, dbus.NameFlagDoNotQueue)
+	reply, err := connection.SessConnection.RequestName(constants.ServiceName, dbus.NameFlagDoNotQueue)
 	if err != nil {
 		log.Fatalf("Failed to request name: %v", err)
 	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
-		log.Fatalf("Name already taken: %s", shared.ServiceName)
+		log.Fatalf("Name already taken: %s", constants.ServiceName)
 	}
 
 	/*
 	* Register Bluetooth / OBEX agents
 	 */
-	bluezObject := connection.SysConnection.Object(shared.BluezService, shared.BluezObjectPath)
+	bluezObject := connection.SysConnection.Object(constants.BluezService, constants.BluezObjectPath)
 
 	err = agents.RegisterBluetoothAgent(bluezObject)
 	if err != nil {
@@ -67,7 +67,7 @@ func main() {
 	/*
 	* Idle and wait for DBus calls
 	 */
-	log.Printf("Service running on session bus at %s\n\n", shared.ObjectPath)
+	log.Printf("Service running on session bus at %s\n\n", constants.ObjectPath)
 	log.Println("Awaiting D-Bus calls...")
 
 	// Wait for SIGINT or SIGTERM

@@ -1,6 +1,4 @@
-package shared
-
-import "github.com/godbus/dbus/v5"
+package constants
 
 const (
 	BluezService    = "org.bluez"
@@ -10,8 +8,3 @@ const (
 	ObjectPath  = "/com/ezratweaver/AdwBluetoothDaemon"
 	Iface       = "com.ezratweaver.AdwBluetoothDaemon"
 )
-
-type DBusConnections struct {
-	SysConnection  *dbus.Conn
-	SessConnection *dbus.Conn
-}
