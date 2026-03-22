@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	agentPath      = "/com/ezratweaver/AdwBluetooth/agent"
-	agentInterface = "org.bluez.Agent1"
+	agentPath      dbus.ObjectPath = "/com/ezratweaver/AdwBluetooth/agent"
+	agentInterface string          = "org.bluez.Agent1"
 )
 
 type BluetoothAgent struct {
