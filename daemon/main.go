@@ -29,6 +29,9 @@ var ServiceNode = &introspect.Node{
 func main() {
 	connection.SetupDBusConnections()
 
+	defer connection.SysConnection.Close()
+	defer connection.SessConnection.Close()
+
 	/*
 	* Create and register daemon as DBus service
 	 */
