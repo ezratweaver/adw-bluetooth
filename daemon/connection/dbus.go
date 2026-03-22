@@ -38,6 +38,6 @@ func SetupBluezObject() {
 	BluezObject = SysConnection.Object(config.BluezService, config.BluezObjectPath)
 }
 
-func EmitDaemonSignal(signalName string, values ...any) {
-	SessConnection.Emit(config.ObjectPath, config.Iface+"."+signalName, values...)
+func EmitDaemonSignal(signalName string, values ...any) error {
+	return SessConnection.Emit(config.ObjectPath, config.Iface+"."+signalName, values...)
 }
