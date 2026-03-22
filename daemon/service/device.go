@@ -36,3 +36,36 @@ func (d Device) toDBusStruct() any {
 		d.Class, d.Icon, d.UUIDs, d.BatteryPercentage,
 	}
 }
+
+func deviceFromProps(path dbus.ObjectPath, device map[string]dbus.Variant, interfaces map[string]map[string]dbus.Variant) Device {
+	mac, _ := device["Address"].Value().(string)
+	name, _ := device["Name"].Value().(string)
+	alias, _ := device["Alias"].Value().(string)
+	paired, _ := device["Paired"].Value().(bool)
+	connected, _ := device["Connected"].Value().(bool)
+	trusted, _ := device["Trusted"].Value().(bool)
+	class, _ := device["Class"].Value().(uint32)
+	icon, _ := device["Icon"].Value().(string)
+	uuids, _ := device["UUIDs"].Value().([]string)
+
+	batteryPercentage := int16(-1)
+	if battery, hasBattery := interfaces["org.bluez.Battery1"]; hasBattery {
+		if pct, ok := battery["Percentage"].Value().(byte); ok {
+			batteryPercentage = int16(pct)
+		}
+	}
+
+	return Device{
+		Path:              path,
+		MAC:               mac,
+		Name:              name,
+		Alias:             alias,
+		Connected:         connected,
+		Paired:            paired,
+		Trusted:           trusted,
+		Class:             class,
+		Icon:              icon,
+		UUIDs:             uuids,
+		BatteryPercentage: batteryPercentage,
+	}
+}

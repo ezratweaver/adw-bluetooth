@@ -74,35 +74,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 		return
 	}
 
-	mac, _ := device["Address"].Value().(string)
-	alias, _ := device["Alias"].Value().(string)
-	paired, _ := device["Paired"].Value().(bool)
-	connected, _ := device["Connected"].Value().(bool)
-	trusted, _ := device["Trusted"].Value().(bool)
-	class, _ := device["Class"].Value().(uint32)
-	icon, _ := device["Icon"].Value().(string)
-	uuids, _ := device["UUIDs"].Value().([]string)
-
-	batteryPercentage := int16(-1)
-	if battery, hasBattery := interfaces["org.bluez.Battery1"]; hasBattery {
-		if pct, ok := battery["Percentage"].Value().(byte); ok {
-			batteryPercentage = int16(pct)
-		}
-	}
-
-	d := Device{
-		Path:              path,
-		MAC:               mac,
-		Name:              name,
-		Alias:             alias,
-		Connected:         connected,
-		Paired:            paired,
-		Trusted:           trusted,
-		Class:             class,
-		Icon:              icon,
-		UUIDs:             uuids,
-		BatteryPercentage: batteryPercentage,
-	}
+	d := deviceFromProps(path, device, interfaces)
 
 	daemon.devices[path] = d
 
@@ -249,35 +221,7 @@ func (daemon *AdwBluetoothDaemon) initializeAdaptersAndDevices() {
 					continue
 				}
 
-				mac, _ := device["Address"].Value().(string)
-				alias, _ := device["Alias"].Value().(string)
-				paired, _ := device["Paired"].Value().(bool)
-				connected, _ := device["Connected"].Value().(bool)
-				trusted, _ := device["Trusted"].Value().(bool)
-				class, _ := device["Class"].Value().(uint32)
-				icon, _ := device["Icon"].Value().(string)
-				uuids, _ := device["UUIDs"].Value().([]string)
-
-				batteryPercentage := int16(-1)
-				if battery, hasBattery := interfaces["org.bluez.Battery1"]; hasBattery {
-					if pct, ok := battery["Percentage"].Value().(byte); ok {
-						batteryPercentage = int16(pct)
-					}
-				}
-
-				daemon.devices[path] = Device{
-					Path:              path,
-					MAC:               mac,
-					Name:              name,
-					Alias:             alias,
-					Connected:         connected,
-					Paired:            paired,
-					Trusted:           trusted,
-					Class:             class,
-					Icon:              icon,
-					UUIDs:             uuids,
-					BatteryPercentage: batteryPercentage,
-				}
+				daemon.devices[path] = deviceFromProps(path, device, interfaces)
 			}
 
 		}
