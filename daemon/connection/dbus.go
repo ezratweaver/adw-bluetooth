@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ezratweaver/adw-bluetooth/daemon/config"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -30,4 +31,8 @@ func SetupDBusConnections() {
 		os.Exit(1)
 	}
 
+}
+
+func EmitDaemonSignal(signalName string, values ...any) {
+	SessConnection.Emit(config.ObjectPath, config.ServiceName+"."+signalName, values)
 }

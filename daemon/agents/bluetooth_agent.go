@@ -13,19 +13,13 @@ const (
 type BluetoothAgent struct {
 }
 
-func (agent *BluetoothAgent) RequestPinCode(device dbus.ObjectPath) (string, *dbus.Error) {
-	return "0000", nil
-}
-
 func (agent *BluetoothAgent) DisplayPinCode(device dbus.ObjectPath, pincode string) *dbus.Error {
+	connection.EmitDaemonSignal("DisplayPinCode", device, pincode)
 	return nil
 }
 
-func (agent *BluetoothAgent) RequestPasskey(device dbus.ObjectPath) (uint32, *dbus.Error) {
-	return 0, nil
-}
-
 func (agent *BluetoothAgent) DisplayPasskey(device dbus.ObjectPath, passkey uint32, entered uint16) *dbus.Error {
+	connection.EmitDaemonSignal("DisplayPasskey", device, passkey, entered)
 	return nil
 }
 
@@ -44,6 +38,7 @@ func (agent *BluetoothAgent) AuthorizeService(device dbus.ObjectPath, uuid strin
 }
 
 func (agent *BluetoothAgent) Cancel() *dbus.Error {
+	// Always going to return nil
 	return nil
 }
 

@@ -22,6 +22,23 @@ var ServiceNode = &introspect.Node{
 		{
 			Name:    config.Iface,
 			Methods: introspect.Methods(new(service.AdwBluetoothDaemon)),
+			Signals: []introspect.Signal{
+				{
+					Name: "DisplayPinCode",
+					Args: []introspect.Arg{
+						{Name: "device", Type: "o", Direction: "out"},
+						{Name: "pincode", Type: "s", Direction: "out"},
+					},
+				},
+				{
+					Name: "DisplayPasskey",
+					Args: []introspect.Arg{
+						{Name: "device", Type: "o", Direction: "out"},
+						{Name: "passkey", Type: "u", Direction: "out"},
+						{Name: "entered", Type: "q", Direction: "out"},
+					},
+				},
+			},
 		},
 	},
 }
