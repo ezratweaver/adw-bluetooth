@@ -1,6 +1,9 @@
 package agents
 
-import "github.com/godbus/dbus/v5"
+import (
+	"github.com/ezratweaver/adw-bluetooth/daemon/connection"
+	"github.com/godbus/dbus/v5"
+)
 
 const (
 	agentPath      = "/com/ezratweaver/AdwBluetooth/agent"
@@ -8,7 +11,6 @@ const (
 )
 
 type BluetoothAgent struct {
-	SysConnection *dbus.Conn
 }
 
 func (agent *BluetoothAgent) RequestPinCode(device dbus.ObjectPath) (string, *dbus.Error) {
@@ -36,6 +38,8 @@ func (agent *BluetoothAgent) RequestAuthorization(device dbus.ObjectPath) *dbus.
 }
 
 func (agent *BluetoothAgent) AuthorizeService(device dbus.ObjectPath, uuid string) *dbus.Error {
+	// When a bluetooth peripheral requests for access to a specifc service, this gets called
+	// Most modern bluetooth managers accept by default, so thats what we'll do.
 	return nil
 }
 
@@ -43,10 +47,10 @@ func (agent *BluetoothAgent) Cancel() *dbus.Error {
 	return nil
 }
 
-func RegisterBluetoothAgent(bluezObject dbus.BusObject, sysConnection *dbus.Conn) error {
-	bluetoothAgent := &BluetoothAgent{SysConnection: sysConnection}
+func RegisterBluetoothAgent(bluezObject dbus.BusObject) error {
+	bluetoothAgent := &BluetoothAgent{}
 
-	err := sysConnection.Export(bluetoothAgent, agentPath, agentInterface)
+	err := connection.SysConnection.Export(bluetoothAgent, agentPath, agentInterface)
 	if err != nil {
 		return err
 
