@@ -7,12 +7,16 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/ezratweaver/adw-bluetooth/daemon/agents"
 	"github.com/ezratweaver/adw-bluetooth/daemon/service"
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
 )
 
 const (
+	BluezService    = "org.bluez"
+	BluezObjectPath = "/org/bluez"
+
 	ServiceName = "com.ezratweaver.AdwBluetoothDaemon"
 	ObjectPath  = "/com/ezratweaver/AdwBluetoothDaemon"
 	Iface       = "com.ezratweaver.AdwBluetoothDaemon"
@@ -30,6 +34,9 @@ var ServiceNode = &introspect.Node{
 }
 
 func main() {
+	/*
+	* Establish DBus connections
+	 */
 	sysConnection, err := dbus.ConnectSystemBus()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to connect to SystemBus bus:", err)
@@ -44,7 +51,21 @@ func main() {
 	}
 	defer sessConnection.Close()
 
-	svc := &service.AdwBluetoothDaemon{Connection: sysConnection}
+	/*
+	* Register Bluetooth / OBEX agents
+	 */
+	bluezObject := sysConnection.Object(BluezService, BluezObjectPath)
+
+	err = agents.RegisterBluetoothAgent(bluezObject, sysConnection)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
+		os.Exit(1)
+	}
+
+	/*
+	* Create and register daemon as DBus service
+	 */
+	svc := &service.AdwBluetoothDaemon{SysConnection: sysConnection}
 
 	err = sessConnection.Export(svc, ObjectPath, Iface)
 	if err != nil {
@@ -65,6 +86,9 @@ func main() {
 		log.Fatalf("Name already taken: %s", ServiceName)
 	}
 
+	/*
+	* Idle and wait for DBus calls
+	 */
 	log.Printf("Service running on session bus at %s\n\n", ObjectPath)
 	log.Println("Awaiting D-Bus calls...")
 
@@ -72,6 +96,11 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
+
+	err = agents.UnregisterBluetoothAgent(bluezObject)
+	if err != nil {
+		log.Printf("Failed to unregister Bluetooth agent: %v", err)
+	}
 
 	log.Println("Shutting down.")
 }
