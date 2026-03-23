@@ -11,6 +11,7 @@ import (
 type AdwBluetoothDaemon struct {
 	adapters      map[dbus.ObjectPath]Adapter
 	devices       map[dbus.ObjectPath]Device
+	limboDevices  map[dbus.ObjectPath]Device
 	activeAdapter dbus.ObjectPath
 }
 

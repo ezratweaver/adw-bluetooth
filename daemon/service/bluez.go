@@ -18,18 +18,6 @@ func getManagedObjects() (managedObjects, error) {
 	return result, err
 }
 
-func adapterFromProps(path dbus.ObjectPath, props map[string]dbus.Variant) Adapter {
-	alias, _ := props["Alias"].Value().(string)
-	powered, _ := props["Powered"].Value().(bool)
-	discovering, _ := props["Discovering"].Value().(bool)
-	return Adapter{
-		Path:        path,
-		Alias:       alias,
-		Powered:     powered,
-		Discovering: discovering,
-	}
-}
-
 func (daemon *AdwBluetoothDaemon) startBlueZListener() {
 	// Subscribe to new device discovered
 	connection.SysConnection.BusObject().Call(
@@ -139,6 +127,12 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 		return
 	}
 
+	_, isLimboDevice := daemon.limboDevices[path]
+	if isLimboDevice {
+		delete(daemon.limboDevices, path)
+		return
+	}
+
 	delete(daemon.devices, path)
 
 	if err := connection.EmitDaemonSignal("DeviceRemoved", path); err != nil {
@@ -198,66 +192,87 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 		return
 	}
 
-	d, exists := daemon.devices[path]
-	if !exists {
+	device, isNormal := daemon.devices[path]
+	limboDevice, isLimbo := daemon.limboDevices[path]
+
+	switch {
+	case isNormal && isLimbo:
+		log.Println("Device exists both as limbo and regular device!")
 		return
+	case !isNormal && !isLimbo:
+		return
+	case isLimbo:
+		device = limboDevice
 	}
 
 	updated := false
 
 	switch iface {
 	case "org.bluez.Device1":
-		if v, ok := changed["Name"].Value().(string); ok && d.Name != v {
-			d.Name = v
+		if v, ok := changed["Name"].Value().(string); ok && device.Name != v {
+			device.Name = v
 			updated = true
 		}
-		if v, ok := changed["Alias"].Value().(string); ok && d.Alias != v {
-			d.Alias = v
+		if v, ok := changed["Alias"].Value().(string); ok && device.Alias != v {
+			device.Alias = v
 			updated = true
 		}
-		if v, ok := changed["Connected"].Value().(bool); ok && d.Connected != v {
-			d.Connected = v
+		if v, ok := changed["Connected"].Value().(bool); ok && device.Connected != v {
+			device.Connected = v
 			updated = true
 		}
-		if v, ok := changed["Paired"].Value().(bool); ok && d.Paired != v {
-			d.Paired = v
+		if v, ok := changed["Paired"].Value().(bool); ok && device.Paired != v {
+			device.Paired = v
 			updated = true
 		}
-		if v, ok := changed["Trusted"].Value().(bool); ok && d.Trusted != v {
-			d.Trusted = v
+		if v, ok := changed["Trusted"].Value().(bool); ok && device.Trusted != v {
+			device.Trusted = v
 			updated = true
 		}
-		if v, ok := changed["Class"].Value().(uint32); ok && d.Class != v {
-			d.Class = v
+		if v, ok := changed["Class"].Value().(uint32); ok && device.Class != v {
+			device.Class = v
 			updated = true
 		}
-		if v, ok := changed["Icon"].Value().(string); ok && d.Icon != v {
-			d.Icon = v
+		if v, ok := changed["Icon"].Value().(string); ok && device.Icon != v {
+			device.Icon = v
 			updated = true
 		}
 		if v, ok := changed["UUIDs"].Value().([]string); ok {
-			d.UUIDs = v
+			device.UUIDs = v
 			updated = true
 		}
 
 	case "org.bluez.Battery1":
 		if v, ok := changed["Percentage"].Value().(byte); ok {
-			d.BatteryPercentage = int16(v)
+			device.BatteryPercentage = int16(v)
 			updated = true
 		}
 	}
 
-	if updated {
-		daemon.devices[path] = d
-		if err := connection.EmitDaemonSignal("DeviceUpdated", d); err != nil {
+	// If its a regular device update, just update
+	if updated && isNormal {
+		daemon.devices[path] = device
+		if err := connection.EmitDaemonSignal("DeviceUpdated", device); err != nil {
 			log.Printf("Failed to emit DeviceUpdated: %v", err)
+		}
+	}
+
+	// If its a limbo device that changed, see if it finally has a name
+	// if it does, promote it to a regular device
+	newName, nameWasChanged := changed["Name"].Value().(string)
+	if isLimbo && nameWasChanged && newName != "" {
+		daemon.devices[path] = device
+
+		delete(daemon.limboDevices, path)
+
+		if err := connection.EmitDaemonSignal("DeviceAdded", device); err != nil {
+			log.Printf("Failed to emit DeviceAdded: %v", err)
 		}
 	}
 }
 
 func (daemon *AdwBluetoothDaemon) initializeAdaptersAndDevices() {
 	daemon.adapters = make(map[dbus.ObjectPath]Adapter)
-	daemon.devices = make(map[dbus.ObjectPath]Device)
 
 	result, err := getManagedObjects()
 	if err != nil {
@@ -280,6 +295,7 @@ func (daemon *AdwBluetoothDaemon) initializeAdaptersAndDevices() {
 
 func (daemon *AdwBluetoothDaemon) loadDevicesForAdapter(mangedObjects managedObjects) {
 	daemon.devices = make(map[dbus.ObjectPath]Device)
+	daemon.limboDevices = make(map[dbus.ObjectPath]Device)
 
 	for path, interfaces := range mangedObjects {
 		if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
@@ -291,11 +307,13 @@ func (daemon *AdwBluetoothDaemon) loadDevicesForAdapter(mangedObjects managedObj
 			continue
 		}
 
-		name, _ := device["Name"].Value().(string)
-		if name == "" {
-			continue
+		deviceObj := deviceFromProps(path, device, interfaces)
+		if deviceObj.Name == "" {
+			// they don't have a name yet, but they may later be updated
+			// with a name so we'll keep track anyway
+			daemon.limboDevices[path] = deviceObj
+		} else {
+			daemon.devices[path] = deviceObj
 		}
-
-		daemon.devices[path] = deviceFromProps(path, device, interfaces)
 	}
 }
