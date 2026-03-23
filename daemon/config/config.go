@@ -8,5 +8,6 @@ const (
 	ObjectPath  = "/com/ezratweaver/AdwBluetoothDaemon"
 	Iface       = "com.ezratweaver.AdwBluetoothDaemon"
 
-	BluezRejectedError = "org.bluez.Error.Rejected"
+	BluezRejectedError    = "org.bluez.Error.Rejected"
+	NoPendingRequestError = "com.ezratweaver.AdwBluetoothDaemon.Error.NoPendingRequest"
 )
