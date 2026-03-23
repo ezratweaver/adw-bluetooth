@@ -56,9 +56,10 @@ func (daemon *AdwBluetoothDaemon) GetActiveAdapter() (Adapter, *dbus.Error) {
 	return a, nil
 }
 
-func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) *dbus.Error {
-	if _, ok := daemon.adapters[path]; !ok {
-		return dbus.NewError("org.freedesktop.DBus.Error.InvalidArgs", []any{"adapter not found"})
+func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) (Adapter, *dbus.Error) {
+	adapter, ok := daemon.adapters[path]
+	if !ok {
+		return Adapter{}, dbus.NewError("org.freedesktop.DBus.Error.InvalidArgs", []any{"adapter not found"})
 	}
 
 	daemon.activeAdapter = path
@@ -66,14 +67,12 @@ func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) *dbus.E
 	result, err := getManagedObjects()
 	if err != nil {
 		log.Printf("Failed to reload devices for new adapter: %v", err)
-		return dbus.NewError("org.freedesktop.DBus.Error.Failed", []any{"failed to reload devices"})
+		return Adapter{}, dbus.NewError("org.freedesktop.DBus.Error.Failed", []any{"failed to reload devices"})
 	}
 
 	oldDevices := daemon.devices
 
 	daemon.loadDevicesForAdapter(result)
-
-	connection.EmitDaemonSignal("AdapterUpdated", daemon.adapters[path])
 
 	for devicePath := range oldDevices {
 		connection.EmitDaemonSignal("DeviceRemoved", devicePath)
@@ -83,7 +82,7 @@ func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) *dbus.E
 		connection.EmitDaemonSignal("DeviceAdded", device)
 	}
 
-	return nil
+	return adapter, nil
 }
 
 func (daemon *AdwBluetoothDaemon) ConnectDevice(path dbus.ObjectPath) *dbus.Error {
