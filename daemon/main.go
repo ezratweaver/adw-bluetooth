@@ -54,7 +54,7 @@ var ServiceNode = &introspect.Node{
 				{
 					Name: "DeviceAdded",
 					Args: []introspect.Arg{
-						{Name: "device", Type: "(osssbbbusan)", Direction: "out"},
+						{Name: "device", Type: "(osssbbbusasn)", Direction: "out"},
 					},
 				},
 				{
@@ -66,7 +66,7 @@ var ServiceNode = &introspect.Node{
 				{
 					Name: "DeviceUpdated",
 					Args: []introspect.Arg{
-						{Name: "device", Type: "(osssbbbusan)", Direction: "out"},
+						{Name: "device", Type: "(osssbbbusasn)", Direction: "out"},
 					},
 				},
 			},

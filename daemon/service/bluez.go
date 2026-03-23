@@ -9,6 +9,27 @@ import (
 	"github.com/godbus/dbus/v5"
 )
 
+type managedObjects = map[dbus.ObjectPath]map[string]map[string]dbus.Variant
+
+func getManagedObjects() (managedObjects, error) {
+	bluezRootObj := connection.SysConnection.Object("org.bluez", "/")
+	result := make(managedObjects)
+	err := bluezRootObj.Call("org.freedesktop.DBus.ObjectManager.GetManagedObjects", 0).Store(&result)
+	return result, err
+}
+
+func adapterFromProps(path dbus.ObjectPath, props map[string]dbus.Variant) Adapter {
+	alias, _ := props["Alias"].Value().(string)
+	powered, _ := props["Powered"].Value().(bool)
+	discovering, _ := props["Discovering"].Value().(bool)
+	return Adapter{
+		Path:        path,
+		Alias:       alias,
+		Powered:     powered,
+		Discovering: discovering,
+	}
+}
+
 func (daemon *AdwBluetoothDaemon) startBlueZListener() {
 	// Subscribe to new device discovered
 	connection.SysConnection.BusObject().Call(
@@ -55,7 +76,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 		return
 	}
 
-	if !strings.HasPrefix(string(path), "/org/bluez/") {
+	if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
 		return
 	}
 
@@ -116,7 +137,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 
 	path := signal.Path
 
-	if !strings.HasPrefix(string(path), "/org/bluez/") {
+	if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
 		return
 	}
 
@@ -191,39 +212,43 @@ func (daemon *AdwBluetoothDaemon) initializeAdaptersAndDevices() {
 	daemon.adapters = make(map[dbus.ObjectPath]Adapter)
 	daemon.devices = make(map[dbus.ObjectPath]Device)
 
-	bluezRootObj := connection.SysConnection.Object("org.bluez", "/")
-
-	result := make(map[dbus.ObjectPath]map[string]map[string]dbus.Variant)
-	err := bluezRootObj.Call("org.freedesktop.DBus.ObjectManager.GetManagedObjects", 0).Store(&result)
+	result, err := getManagedObjects()
 	if err != nil {
-		log.Fatalf("Failed to introspect objects from bluez: %v", err)
+		log.Fatalf("Failed to get managed objects from bluez: %v", err)
 	}
 
 	for path, interfaces := range result {
-
-		if strings.HasPrefix(string(path), "/org/bluez/") {
-
-			adapter, isAdapter := interfaces["org.bluez.Adapter1"]
-			device, isDevice := interfaces["org.bluez.Device1"]
-
-			if isAdapter {
-				daemon.adapters[path] = Adapter{
-					Path:        path,
-					Alias:       adapter["Alias"].Value().(string),
-					Powered:     adapter["Powered"].Value().(bool),
-					Discovering: adapter["Discovering"].Value().(bool),
-				}
-			}
-
-			if isDevice {
-				name, _ := device["Name"].Value().(string)
-				if name == "" {
-					continue
-				}
-
-				daemon.devices[path] = deviceFromProps(path, device, interfaces)
-			}
-
+		props, isAdapter := interfaces["org.bluez.Adapter1"]
+		if !isAdapter {
+			continue
 		}
+		daemon.adapters[path] = adapterFromProps(path, props)
+		if daemon.activeAdapter == "" {
+			daemon.activeAdapter = path
+		}
+	}
+
+	daemon.loadDevicesForAdapter(result)
+}
+
+func (daemon *AdwBluetoothDaemon) loadDevicesForAdapter(mangedObjects managedObjects) {
+	daemon.devices = make(map[dbus.ObjectPath]Device)
+
+	for path, interfaces := range mangedObjects {
+		if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
+			continue
+		}
+
+		device, isDevice := interfaces["org.bluez.Device1"]
+		if !isDevice {
+			continue
+		}
+
+		name, _ := device["Name"].Value().(string)
+		if name == "" {
+			continue
+		}
+
+		daemon.devices[path] = deviceFromProps(path, device, interfaces)
 	}
 }

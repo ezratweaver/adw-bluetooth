@@ -9,6 +9,15 @@ type Adapter struct {
 	Alias       string
 	Powered     bool
 	Discovering bool
+}
 
-	Devices map[dbus.ObjectPath]Device
+func (a Adapter) toDBusStruct() any {
+	return struct {
+		Path        dbus.ObjectPath
+		Alias       string
+		Powered     bool
+		Discovering bool
+	}{
+		a.Path, a.Alias, a.Powered, a.Discovering,
+	}
 }
