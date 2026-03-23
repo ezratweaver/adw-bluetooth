@@ -373,6 +373,9 @@ export class BluetoothManager extends GObject.Object {
 
     destroy(): void {
         this._obex.destroy();
+        if (this._activeAdapter?.discovering) {
+            this.stopDiscovery().catch(() => {});
+        }
     }
 }
 
