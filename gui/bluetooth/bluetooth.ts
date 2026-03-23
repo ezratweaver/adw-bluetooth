@@ -2,129 +2,48 @@ import Gio from "gi://Gio?version=2.0";
 import GLib from "gi://GLib?version=2.0";
 import GObject from "gi://GObject?version=2.0";
 
+import { Device, parseDeviceData } from "./device.js";
+import { Adapter, parseAdapterData } from "./adapter.js";
+
+export { Device } from "./device.js";
+export { Adapter } from "./adapter.js";
+
 const DAEMON_SERVICE = "com.ezratweaver.AdwBluetoothDaemon";
 const DAEMON_OBJECT_PATH = "/com/ezratweaver/AdwBluetoothDaemon";
 const DAEMON_INTERFACE = "com.ezratweaver.AdwBluetoothDaemon";
 
 const sessionBus = Gio.bus_get_sync(Gio.BusType.SESSION, null);
 
-export interface Adapter {
-    path: string;
-    alias: string;
-    powered: boolean;
-    discovering: boolean;
-}
-
-export interface Device {
-    path: string;
-    mac: string;
-    name: string;
-    alias: string;
-    connected: boolean;
-    paired: boolean;
-    trusted: boolean;
-    class: number;
-    icon: string;
-    uuids: string[];
-    batteryPercentage: number; // -1 = unavailable
-}
-
-function parseAdapter(variant: GLib.Variant): Adapter {
-    const [path, alias, powered, discovering] = variant.deep_unpack() as [
-        string,
-        string,
-        boolean,
-        boolean,
-    ];
-    return { path, alias, powered, discovering };
-}
-
-function parseDevice(variant: GLib.Variant): Device {
-    const [
-        path,
-        mac,
-        name,
-        alias,
-        connected,
-        paired,
-        trusted,
-        deviceClass,
-        icon,
-        uuids,
-        batteryPercentage,
-    ] = variant.deep_unpack() as [
-        string,
-        string,
-        string,
-        string,
-        boolean,
-        boolean,
-        boolean,
-        number,
-        string,
-        string[],
-        number,
-    ];
-    return {
-        path,
-        mac,
-        name,
-        alias,
-        connected,
-        paired,
-        trusted,
-        class: deviceClass,
-        icon,
-        uuids,
-        batteryPercentage,
-    };
-}
-
 export class BluetoothManager extends GObject.Object {
     private _proxy: Gio.DBusProxy;
-    private _devices: Map<string, Device> = new Map();
-    private _adapters: Map<string, Adapter> = new Map();
+    private _devices: Gio.ListStore;
+    private _adapters: Gio.ListStore;
     private _activeAdapter: Adapter | null = null;
 
     static {
         GObject.registerClass(
             {
+                GTypeName: "BluetoothManager",
+                Properties: {
+                    "active-adapter": GObject.ParamSpec.object(
+                        "active-adapter",
+                        "Active Adapter",
+                        "Currently active adapter",
+                        Adapter.$gtype as any,
+                        GObject.ParamFlags.READABLE as any,
+                    ),
+                },
                 Signals: {
-                    // Device signals
-                    "device-added": {
-                        param_types: [GObject.TYPE_STRING], // device path
-                    },
-                    "device-removed": {
-                        param_types: [GObject.TYPE_STRING], // device path
-                    },
-                    "device-updated": {
-                        param_types: [GObject.TYPE_STRING], // device path
-                    },
-                    // Adapter signals
-                    "adapter-added": {
-                        param_types: [GObject.TYPE_STRING], // adapter path
-                    },
-                    "adapter-removed": {
-                        param_types: [GObject.TYPE_STRING], // adapter path
-                    },
-                    "adapter-updated": {
-                        param_types: [GObject.TYPE_STRING], // adapter path
-                    },
-                    // Pairing signals
                     "request-confirmation": {
-                        // device path, passkey
                         param_types: [GObject.TYPE_STRING, GObject.TYPE_UINT],
                     },
                     "request-authorization": {
-                        // device path
                         param_types: [GObject.TYPE_STRING],
                     },
                     "display-pin-code": {
-                        // device path, pincode
                         param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING],
                     },
                     "display-passkey": {
-                        // device path, passkey, entered
                         param_types: [
                             GObject.TYPE_STRING,
                             GObject.TYPE_UINT,
@@ -139,6 +58,9 @@ export class BluetoothManager extends GObject.Object {
 
     constructor() {
         super();
+
+        this._devices = new Gio.ListStore({ item_type: Device.$gtype });
+        this._adapters = new Gio.ListStore({ item_type: Adapter.$gtype });
 
         this._proxy = Gio.DBusProxy.new_sync(
             sessionBus,
@@ -158,7 +80,7 @@ export class BluetoothManager extends GObject.Object {
         sessionBus.signal_subscribe(
             DAEMON_SERVICE,
             DAEMON_INTERFACE,
-            null, // all signals
+            null,
             DAEMON_OBJECT_PATH,
             null,
             Gio.DBusSignalFlags.NONE,
@@ -178,45 +100,47 @@ export class BluetoothManager extends GObject.Object {
 
         switch (signalName) {
             case "DeviceAdded": {
-                const device = parseDevice(parameters.get_child_value(0));
-                this._devices.set(device.path, device);
-                this.emit("device-added", device.path);
+                const data = parseDeviceData(parameters.get_child_value(0));
+                const device = new Device(data);
+                this._devices.append(device);
                 break;
             }
             case "DeviceRemoved": {
                 const path = params[0] as string;
-                this._devices.delete(path);
-                this.emit("device-removed", path);
+                const [, index] = this.findDeviceByPath(path);
+                if (index !== -1) {
+                    this._devices.remove(index);
+                }
                 break;
             }
             case "DeviceUpdated": {
-                const device = parseDevice(parameters.get_child_value(0));
-                this._devices.set(device.path, device);
-                this.emit("device-updated", device.path);
+                const data = parseDeviceData(parameters.get_child_value(0));
+                const [device] = this.findDeviceByPath(data.path);
+                if (device) {
+                    device.updateFromDaemon(data);
+                }
                 break;
             }
             case "AdapterAdded": {
-                const adapter = parseAdapter(parameters.get_child_value(0));
-                this._adapters.set(adapter.path, adapter);
-                this.emit("adapter-added", adapter.path);
+                const data = parseAdapterData(parameters.get_child_value(0));
+                const adapter = new Adapter(data);
+                this._adapters.append(adapter);
                 break;
             }
             case "AdapterRemoved": {
                 const path = params[0] as string;
-                this._adapters.delete(path);
-                this.emit("adapter-removed", path);
+                const [, index] = this.findAdapterByPath(path);
+                if (index !== -1) {
+                    this._adapters.remove(index);
+                }
                 break;
             }
             case "AdapterUpdated": {
-                const adapter = parseAdapter(parameters.get_child_value(0));
-                this._adapters.set(adapter.path, adapter);
-                if (
-                    this._activeAdapter &&
-                    this._activeAdapter.path === adapter.path
-                ) {
-                    this._activeAdapter = adapter;
+                const data = parseAdapterData(parameters.get_child_value(0));
+                const [adapter] = this.findAdapterByPath(data.path);
+                if (adapter) {
+                    adapter.updateFromDaemon(data);
                 }
-                this.emit("adapter-updated", adapter.path);
                 break;
             }
             case "RequestConfirmation": {
@@ -259,10 +183,10 @@ export class BluetoothManager extends GObject.Object {
             if (adaptersResult) {
                 const adaptersArray = adaptersResult.get_child_value(0);
                 for (let i = 0; i < adaptersArray.n_children(); i++) {
-                    const adapter = parseAdapter(
+                    const data = parseAdapterData(
                         adaptersArray.get_child_value(i),
                     );
-                    this._adapters.set(adapter.path, adapter);
+                    this._adapters.append(new Adapter(data));
                 }
             }
         } catch (error) {
@@ -279,7 +203,9 @@ export class BluetoothManager extends GObject.Object {
                 null,
             );
             if (activeResult) {
-                this._activeAdapter = parseAdapter(activeResult);
+                const data = parseAdapterData(activeResult);
+                const [adapter] = this.findAdapterByPath(data.path);
+                this._activeAdapter = adapter ?? new Adapter(data);
             }
         } catch (error) {
             log(`Failed to load active adapter: ${error}`);
@@ -297,8 +223,10 @@ export class BluetoothManager extends GObject.Object {
             if (devicesResult) {
                 const devicesArray = devicesResult.get_child_value(0);
                 for (let i = 0; i < devicesArray.n_children(); i++) {
-                    const device = parseDevice(devicesArray.get_child_value(i));
-                    this._devices.set(device.path, device);
+                    const data = parseDeviceData(
+                        devicesArray.get_child_value(i),
+                    );
+                    this._devices.append(new Device(data));
                 }
             }
         } catch (error) {
@@ -306,25 +234,38 @@ export class BluetoothManager extends GObject.Object {
         }
     }
 
-    // Getters for state
-    get devices(): Device[] {
-        return Array.from(this._devices.values());
+    // ListStore accessors
+    get devices(): Gio.ListStore {
+        return this._devices;
     }
 
-    get adapters(): Adapter[] {
-        return Array.from(this._adapters.values());
+    get adapters(): Gio.ListStore {
+        return this._adapters;
     }
 
     get activeAdapter(): Adapter | null {
         return this._activeAdapter;
     }
 
-    getDevice(path: string): Device | undefined {
-        return this._devices.get(path);
+    // Lookup helpers
+    findDeviceByPath(path: string): [Device | null, number] {
+        for (let i = 0; i < this._devices.get_n_items(); i++) {
+            const device = this._devices.get_item(i) as Device;
+            if (device.path === path) {
+                return [device, i];
+            }
+        }
+        return [null, -1];
     }
 
-    getAdapter(path: string): Adapter | undefined {
-        return this._adapters.get(path);
+    findAdapterByPath(path: string): [Adapter | null, number] {
+        for (let i = 0; i < this._adapters.get_n_items(); i++) {
+            const adapter = this._adapters.get_item(i) as Adapter;
+            if (adapter.path === path) {
+                return [adapter, i];
+            }
+        }
+        return [null, -1];
     }
 
     // Methods that call daemon
@@ -378,7 +319,10 @@ export class BluetoothManager extends GObject.Object {
             new GLib.Variant("(o)", [path]),
         );
         if (result) {
-            this._activeAdapter = parseAdapter(result);
+            const data = parseAdapterData(result);
+            const [adapter] = this.findAdapterByPath(data.path);
+            this._activeAdapter = adapter ?? new Adapter(data);
+            this.notify("active-adapter");
         }
     }
 
