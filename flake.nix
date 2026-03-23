@@ -13,7 +13,7 @@
         pname = "adw-bluetooth-daemon";
         version = "1.0.0";
         src = ./daemon;
-        vendorHash = "sha256-7tiSwNhq6e4LEh4lUkfh2i4tEdWWL6TxQpYYwYKsfog=";
+        vendorHash = "";
       };
     in
     {
