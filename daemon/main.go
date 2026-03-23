@@ -69,6 +69,24 @@ var ServiceNode = &introspect.Node{
 						{Name: "device", Type: "(osssbbbusasn)", Direction: "out"},
 					},
 				},
+				{
+					Name: "AdapterAdded",
+					Args: []introspect.Arg{
+						{Name: "adapter", Type: "(osbb)", Direction: "out"},
+					},
+				},
+				{
+					Name: "AdapterRemoved",
+					Args: []introspect.Arg{
+						{Name: "path", Type: "o", Direction: "out"},
+					},
+				},
+				{
+					Name: "AdapterUpdated",
+					Args: []introspect.Arg{
+						{Name: "adapter", Type: "(osbb)", Direction: "out"},
+					},
+				},
 			},
 		},
 	},

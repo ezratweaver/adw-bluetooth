@@ -154,6 +154,18 @@ func (daemon *AdwBluetoothDaemon) StopDiscovery() *dbus.Error {
 	return nil
 }
 
+func (daemon *AdwBluetoothDaemon) SetAdapterPower(powered bool) *dbus.Error {
+	callErr := connection.SysConnection.Object("org.bluez", daemon.activeAdapter).Call(
+		"org.freedesktop.DBus.Properties.Set", 0,
+		"org.bluez.Adapter1", "Powered", dbus.MakeVariant(powered),
+	).Err
+	if callErr != nil {
+		log.Printf("Failed to set adapter power: %v", callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+	return nil
+}
+
 func NewAdwBluetoothDaemon() *AdwBluetoothDaemon {
 	daemon := &AdwBluetoothDaemon{}
 

@@ -76,12 +76,21 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 		return
 	}
 
-	if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
+	interfaces, ok := signal.Body[1].(map[string]map[string]dbus.Variant)
+	if !ok {
 		return
 	}
 
-	interfaces, ok := signal.Body[1].(map[string]map[string]dbus.Variant)
-	if !ok {
+	if props, isAdapter := interfaces["org.bluez.Adapter1"]; isAdapter {
+		a := adapterFromProps(path, props)
+		daemon.adapters[path] = a
+		if err := connection.EmitDaemonSignal("AdapterAdded", a.toDBusStruct()); err != nil {
+			log.Printf("Failed to emit AdapterAdded: %v", err)
+		}
+		return
+	}
+
+	if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
 		return
 	}
 
@@ -96,7 +105,6 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 	}
 
 	d := deviceFromProps(path, device, interfaces)
-
 	daemon.devices[path] = d
 
 	if err := connection.EmitDaemonSignal("DeviceAdded", d.toDBusStruct()); err != nil {
@@ -119,6 +127,14 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 		return
 	}
 
+	if slices.Contains(interfaces, "org.bluez.Adapter1") {
+		delete(daemon.adapters, path)
+		if err := connection.EmitDaemonSignal("AdapterRemoved", path); err != nil {
+			log.Printf("Failed to emit AdapterRemoved: %v", err)
+		}
+		return
+	}
+
 	if !slices.Contains(interfaces, "org.bluez.Device1") {
 		return
 	}
@@ -137,7 +153,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 
 	path := signal.Path
 
-	if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
+	if !strings.HasPrefix(string(path), "/org/bluez/") {
 		return
 	}
 
@@ -148,6 +164,37 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 
 	changed, ok := signal.Body[1].(map[string]dbus.Variant)
 	if !ok {
+		return
+	}
+
+	if iface == "org.bluez.Adapter1" {
+		a, exists := daemon.adapters[path]
+		if !exists {
+			return
+		}
+		updated := false
+		if v, ok := changed["Alias"].Value().(string); ok && a.Alias != v {
+			a.Alias = v
+			updated = true
+		}
+		if v, ok := changed["Powered"].Value().(bool); ok && a.Powered != v {
+			a.Powered = v
+			updated = true
+		}
+		if v, ok := changed["Discovering"].Value().(bool); ok && a.Discovering != v {
+			a.Discovering = v
+			updated = true
+		}
+		if updated {
+			daemon.adapters[path] = a
+			if err := connection.EmitDaemonSignal("AdapterUpdated", a.toDBusStruct()); err != nil {
+				log.Printf("Failed to emit AdapterUpdated: %v", err)
+			}
+		}
+		return
+	}
+
+	if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
 		return
 	}
 
