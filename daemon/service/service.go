@@ -30,28 +30,28 @@ func (daemon *AdwBluetoothDaemon) ConfirmAuthorization(accepted bool) *dbus.Erro
 	return nil
 }
 
-func (daemon *AdwBluetoothDaemon) GetDevices() ([]any, *dbus.Error) {
-	devices := make([]any, 0, len(daemon.devices))
+func (daemon *AdwBluetoothDaemon) GetDevices() ([]Device, *dbus.Error) {
+	devices := make([]Device, 0, len(daemon.devices))
 	for _, d := range daemon.devices {
-		devices = append(devices, d.toDBusStruct())
+		devices = append(devices, d)
 	}
 	return devices, nil
 }
 
-func (daemon *AdwBluetoothDaemon) GetAdapters() ([]any, *dbus.Error) {
-	adapters := make([]any, 0, len(daemon.adapters))
+func (daemon *AdwBluetoothDaemon) GetAdapters() ([]Adapter, *dbus.Error) {
+	adapters := make([]Adapter, 0, len(daemon.adapters))
 	for _, a := range daemon.adapters {
-		adapters = append(adapters, a.toDBusStruct())
+		adapters = append(adapters, a)
 	}
 	return adapters, nil
 }
 
-func (daemon *AdwBluetoothDaemon) GetActiveAdapter() (any, *dbus.Error) {
+func (daemon *AdwBluetoothDaemon) GetActiveAdapter() (Adapter, *dbus.Error) {
 	a, ok := daemon.adapters[daemon.activeAdapter]
 	if !ok {
-		return nil, dbus.NewError("org.freedesktop.DBus.Error.Failed", []any{"no active adapter"})
+		return Adapter{}, dbus.NewError("org.freedesktop.DBus.Error.Failed", []any{"no active adapter"})
 	}
-	return a.toDBusStruct(), nil
+	return a, nil
 }
 
 func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) *dbus.Error {

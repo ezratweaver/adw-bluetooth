@@ -84,7 +84,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 	if props, isAdapter := interfaces["org.bluez.Adapter1"]; isAdapter {
 		a := adapterFromProps(path, props)
 		daemon.adapters[path] = a
-		if err := connection.EmitDaemonSignal("AdapterAdded", a.toDBusStruct()); err != nil {
+		if err := connection.EmitDaemonSignal("AdapterAdded", a); err != nil {
 			log.Printf("Failed to emit AdapterAdded: %v", err)
 		}
 		return
@@ -107,7 +107,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 	d := deviceFromProps(path, device, interfaces)
 	daemon.devices[path] = d
 
-	if err := connection.EmitDaemonSignal("DeviceAdded", d.toDBusStruct()); err != nil {
+	if err := connection.EmitDaemonSignal("DeviceAdded", d); err != nil {
 		log.Printf("Failed to emit DeviceAdded: %v", err)
 	}
 }
@@ -187,7 +187,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 		}
 		if updated {
 			daemon.adapters[path] = a
-			if err := connection.EmitDaemonSignal("AdapterUpdated", a.toDBusStruct()); err != nil {
+			if err := connection.EmitDaemonSignal("AdapterUpdated", a); err != nil {
 				log.Printf("Failed to emit AdapterUpdated: %v", err)
 			}
 		}
@@ -249,7 +249,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 
 	if updated {
 		daemon.devices[path] = d
-		if err := connection.EmitDaemonSignal("DeviceUpdated", d.toDBusStruct()); err != nil {
+		if err := connection.EmitDaemonSignal("DeviceUpdated", d); err != nil {
 			log.Printf("Failed to emit DeviceUpdated: %v", err)
 		}
 	}
