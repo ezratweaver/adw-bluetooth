@@ -165,29 +165,23 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupAdapterBindings(): void {
-        if (!bluetooth.adapter) {
+        if (!bluetooth.activeAdapter) {
             this._showNoAdapterState();
             return;
         }
 
-        if (bluetooth.adapter.powered && !bluetooth.adapter.discovering) {
-            try {
-                bluetooth.adapter.startDiscovery();
-            } catch (error) {
+        if (
+            bluetooth.activeAdapter.powered &&
+            !bluetooth.activeAdapter.discovering
+        ) {
+            bluetooth.startDiscovery().catch((error) => {
                 log(`Failed to start discovery: ${error}`);
                 this._showToast("Failed to start device discovery");
-            }
+            });
         }
 
-        try {
-            bluetooth.adapter.bluetoothAgent.register();
-        } catch (e) {
-            log(`Failed to initialize bluetooth agent: ${e}`);
-            this._showToast("Failed to initialize pairing agent");
-        }
-
-        this._disabled_state.set_visible(!bluetooth.adapter.powered);
-        this._enabled_state.set_visible(bluetooth.adapter.powered);
+        this._disabled_state.set_visible(!bluetooth.activeAdapter.powered);
+        this._enabled_state.set_visible(bluetooth.activeAdapter.powered);
 
         this._setupPropertyBindings();
         this._setupEventHandlers();
@@ -225,21 +219,20 @@ export class Window extends Adw.ApplicationWindow {
         });
 
         toggleDiscoveryAction.connect("activate", () => {
-            if (!bluetooth.adapter) return;
+            if (!bluetooth.activeAdapter) return;
 
-            try {
-                if (bluetooth.adapter.discovering) {
-                    bluetooth.adapter.stopDiscovery();
-                } else {
-                    bluetooth.adapter.startDiscovery();
-                }
-            } catch (error) {
-                if (bluetooth.adapter.discovering) {
+            const isDiscovering = bluetooth.activeAdapter.discovering;
+            const action = isDiscovering
+                ? bluetooth.stopDiscovery()
+                : bluetooth.startDiscovery();
+
+            action.catch(() => {
+                if (isDiscovering) {
                     this._showToast("Failed to stop device discovery");
                 } else {
                     this._showToast("Failed to start device discovery");
                 }
-            }
+            });
         });
 
         const aboutAction = new Gio.SimpleAction({
@@ -266,28 +259,29 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupAdapterSubMenu() {
-        // Sort adapters by adapter name (hci0, hci1, etc.)
-        const sortedAdapterPaths = Array.from(
-            bluetooth.adapterAliases.keys(),
-        ).sort((pathA, pathB) => {
-            const nameA = pathA.split("/").slice(-1)[0];
-            const nameB = pathB.split("/").slice(-1)[0];
-            return nameA.localeCompare(nameB);
-        });
+        // Collect adapters from ListStore and sort by name (hci0, hci1, etc.)
+        const adapters: { path: string; alias: string; name: string }[] = [];
+        for (let i = 0; i < bluetooth.adapters.get_n_items(); i++) {
+            const adapter = bluetooth.adapters.get_item(
+                i,
+            ) as import("../bluetooth/adapter.js").Adapter;
+            const name = adapter.path.split("/").slice(-1)[0];
+            adapters.push({ path: adapter.path, alias: adapter.alias, name });
+        }
+        adapters.sort((a, b) => a.name.localeCompare(b.name));
 
-        for (const adapterPath of sortedAdapterPaths) {
-            const adapterName = adapterPath.split("/").slice(-1)[0];
-
-            const adapterAlias =
-                bluetooth.adapterAliases.get(adapterPath) || adapterName;
-
+        for (const {
+            path: adapterPath,
+            alias: adapterAlias,
+            name: adapterName,
+        } of adapters) {
             const displayName =
                 adapterAlias !== adapterName
                     ? `${adapterAlias} (${adapterName})`
                     : adapterAlias;
 
             const isCurrentAdapter =
-                adapterPath === bluetooth.adapter?.adapterPath;
+                adapterPath === bluetooth.activeAdapter?.path;
 
             const adapterAction = new Gio.SimpleAction({
                 name: `adapter-${adapterName}`,
@@ -299,21 +293,19 @@ export class Window extends Adw.ApplicationWindow {
 
                 if (settingAdapterOn) {
                     // Uncheck all other adapters
-                    for (const otherPath of bluetooth.adapterAliases.keys()) {
-                        const otherName = otherPath.split("/").slice(-1)[0];
-
+                    for (const other of adapters) {
                         const otherAction = this.lookup_action(
-                            `adapter-${otherName}`,
+                            `adapter-${other.name}`,
                         ) as Gio.SimpleAction;
 
-                        if (otherAction && otherPath !== adapterPath) {
+                        if (otherAction && other.path !== adapterPath) {
                             otherAction.set_state(new GLib.Variant("b", false));
                         }
                     }
 
                     action.set_state(new GLib.Variant("b", true));
 
-                    bluetooth.changeAdapter(adapterPath);
+                    bluetooth.setActiveAdapter(adapterPath);
                     this._resetWindow();
                 }
             });
@@ -333,16 +325,16 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupPropertyBindings(): void {
-        if (!bluetooth.adapter) return;
+        if (!bluetooth.activeAdapter) return;
 
-        bluetooth.adapter.bind_property(
+        bluetooth.activeAdapter.bind_property(
             "powered",
             this._bluetooth_toggle,
             "active",
             GObject.BindingFlags.SYNC_CREATE,
         );
 
-        bluetooth.adapter.bind_property(
+        bluetooth.activeAdapter.bind_property(
             "discovering",
             this._discovering_spinner,
             "visible",
@@ -351,7 +343,7 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupButtonEvents(): void {
-        if (!bluetooth.adapter) return;
+        if (!bluetooth.activeAdapter) return;
 
         let bluetoothToggleHandlerId: number;
 
@@ -372,7 +364,7 @@ export class Window extends Adw.ApplicationWindow {
                     );
                 };
 
-                if (!bluetooth.adapter) {
+                if (!bluetooth.activeAdapter) {
                     setSwitchState(!isPoweringOn);
                     return true;
                 }
@@ -381,21 +373,22 @@ export class Window extends Adw.ApplicationWindow {
                 this._disabled_state.set_visible(!isPoweringOn);
                 this._enabled_state.set_visible(isPoweringOn);
 
-                bluetooth.adapter
+                bluetooth
                     .setAdapterPower(isPoweringOn)
                     .then(() => {
                         // If we're powering on, then start discovery
-                        if (isPoweringOn && !bluetooth.adapter?.discovering) {
-                            try {
-                                bluetooth.adapter?.startDiscovery();
-                            } catch (error) {
+                        if (
+                            isPoweringOn &&
+                            !bluetooth.activeAdapter?.discovering
+                        ) {
+                            bluetooth.startDiscovery().catch((error) => {
                                 log(
                                     `Failed to start discovery on power on: ${error}`,
                                 );
                                 this._showToast(
                                     "Failed to start device discovery",
                                 );
-                            }
+                            });
                         }
 
                         setSwitchState(isPoweringOn);
@@ -420,63 +413,72 @@ export class Window extends Adw.ApplicationWindow {
     private _deviceAddIdleId = 0;
 
     private _setupEventHandlers(): void {
-        if (!bluetooth.adapter) return;
+        if (!bluetooth.activeAdapter) return;
 
-        // Adapter listeners
+        // Device list change signals from BluetoothManager
+        bluetooth.devices.connect(
+            "items-changed",
+            (_, position, removed, added) => {
+                // Handle removed items
+                for (let i = 0; i < removed; i++) {
+                    // We need to track which devices were at this position
+                    // For simplicity, we'll rely on the device path from the map
+                }
 
-        // Add a buffer for adding new devices to the UI, to not block the main thread
-        bluetooth.adapter.connect("device-added", (_, devicePath: string) => {
-            this._deviceAddBuffer.push(devicePath);
+                // Handle added items - add to buffer for batched UI updates
+                for (let i = 0; i < added; i++) {
+                    const device = bluetooth.devices.get_item(
+                        position + i,
+                    ) as Device;
+                    if (device) {
+                        this._deviceAddBuffer.push(device.path);
+                    }
+                }
 
-            // If we havent scheduled an update yet, do it
-            if (this._deviceAddIdleId === 0) {
-                this._deviceAddIdleId = GLib.idle_add(
-                    GLib.PRIORITY_DEFAULT_IDLE,
-                    () => {
-                        this._deviceAddBuffer.forEach((devicePath) =>
-                            this._addDevice(devicePath),
-                        );
+                // Schedule batched UI update
+                if (added > 0 && this._deviceAddIdleId === 0) {
+                    this._deviceAddIdleId = GLib.idle_add(
+                        GLib.PRIORITY_DEFAULT_IDLE,
+                        () => {
+                            this._deviceAddBuffer.forEach((devicePath) =>
+                                this._addDevice(devicePath),
+                            );
 
-                        this._deviceAddBuffer = [];
-                        this._deviceAddIdleId = 0;
-                        return GLib.SOURCE_REMOVE;
-                    },
-                );
-            }
-        });
-
-        bluetooth.adapter.connect("device-removed", (_, devicePath: string) =>
-            this._removeDevice(devicePath),
+                            this._deviceAddBuffer = [];
+                            this._deviceAddIdleId = 0;
+                            return GLib.SOURCE_REMOVE;
+                        },
+                    );
+                }
+            },
         );
 
-        // Agent event listeners
-        bluetooth.adapter.bluetoothAgent.connect(
-            "confirmation-request",
-            (_, devicePath: string, requestId: string, passkey: number) =>
-                this._showConfirmationDialog(devicePath, requestId, passkey),
+        // Agent event listeners - signals come from BluetoothManager now
+        bluetooth.connect(
+            "request-confirmation",
+            (_, devicePath: string, passkey: number) =>
+                this._showConfirmationDialog(devicePath, passkey),
         );
 
-        bluetooth.adapter.bluetoothAgent.connect(
-            "authorization-request",
-            (_, devicePath: string, requestId: string) =>
-                this._showAuthorizationDialog(devicePath, requestId),
+        bluetooth.connect("request-authorization", (_, devicePath: string) =>
+            this._showAuthorizationDialog(devicePath),
         );
 
-        bluetooth.adapter.bluetoothAgent.connect(
-            "pin-display",
+        bluetooth.connect(
+            "display-pin-code",
             (_, devicePath: string, pincode: string) =>
                 this._showPinDisplayDialog(devicePath, pincode),
         );
 
-        bluetooth.adapter.bluetoothAgent.connect(
-            "passkey-display",
+        bluetooth.connect(
+            "display-passkey",
             (_, devicePath: string, passkey: number) =>
                 this._showPasskeyDisplayDialog(devicePath, passkey),
         );
     }
 
     private _setupDeviceList(): void {
-        if (!bluetooth.adapter) return;
+        if (!bluetooth.activeAdapter) return;
 
         const placeholderBox = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
@@ -528,15 +530,14 @@ export class Window extends Adw.ApplicationWindow {
             if (device1.paired && !device2.paired) return -1;
             if (!device1.paired && device2.paired) return 1;
 
-            if (device1.connectionCount > device2.connectionCount) return -1;
-            if (device2.connectionCount > device1.connectionCount) return 1;
-
             return 0;
         });
 
-        bluetooth.adapter.devices.forEach(({ devicePath }) =>
-            this._addDevice(devicePath),
-        );
+        // Add existing devices from the ListStore
+        for (let i = 0; i < bluetooth.devices.get_n_items(); i++) {
+            const device = bluetooth.devices.get_item(i) as Device;
+            this._addDevice(device.path);
+        }
     }
 
     private _createDeviceRow(device: Device): {
@@ -545,7 +546,7 @@ export class Window extends Adw.ApplicationWindow {
         statusLabel: Gtk.Label;
     } {
         const row = new Adw.ActionRow({
-            name: device.devicePath,
+            name: device.path,
             title: device.alias,
             activatable: true,
         });
@@ -603,11 +604,7 @@ export class Window extends Adw.ApplicationWindow {
         this._toast_overlay.add_toast(toast);
     }
 
-    private _showConfirmationDialog(
-        devicePath: string,
-        requestId: string,
-        passkey: number,
-    ) {
+    private _showConfirmationDialog(devicePath: string, passkey: number) {
         const device = findDeviceByPath(devicePath);
 
         const dialog = new PinConfirmationDialog(
@@ -616,17 +613,17 @@ export class Window extends Adw.ApplicationWindow {
         );
 
         dialog.connect("confirmed", () => {
-            bluetooth.adapter?.bluetoothAgent.confirmPairing(requestId);
+            bluetooth.confirmRequest(true);
         });
 
         dialog.connect("cancelled", () => {
-            bluetooth.adapter?.bluetoothAgent.cancelPairing(requestId);
+            bluetooth.confirmRequest(false);
         });
 
         displayDialogAsTopLevel(dialog);
     }
 
-    private _showAuthorizationDialog(devicePath: string, requestId: string) {
+    private _showAuthorizationDialog(devicePath: string) {
         const device = findDeviceByPath(devicePath);
 
         const dialog = new Adw.AlertDialog({
@@ -643,13 +640,9 @@ export class Window extends Adw.ApplicationWindow {
 
         dialog.connect("response", (_, response: string) => {
             if (response === "allow") {
-                bluetooth.adapter?.bluetoothAgent.confirmAuthorization(
-                    requestId,
-                );
+                bluetooth.confirmAuthorization(true);
             } else {
-                bluetooth.adapter?.bluetoothAgent.cancelAuthorization(
-                    requestId,
-                );
+                bluetooth.confirmAuthorization(false);
             }
         });
 
@@ -689,6 +682,11 @@ export class Window extends Adw.ApplicationWindow {
 
     // Device management methods
     private _addDevice(devicePath: string) {
+        // Check if device already exists in the map
+        if (this._deviceElementsMap.has(devicePath)) {
+            return;
+        }
+
         const device = findDeviceByPath(devicePath);
         if (!device) {
             return;
@@ -696,7 +694,7 @@ export class Window extends Adw.ApplicationWindow {
 
         const { row, spinner, statusLabel } = this._createDeviceRow(device);
 
-        this._deviceElementsMap.set(device.devicePath, {
+        this._deviceElementsMap.set(device.path, {
             row,
             spinner,
             statusLabel,
@@ -714,86 +712,70 @@ export class Window extends Adw.ApplicationWindow {
 
         this._devices_list.append(row);
 
-        device.connect("device-changed", (device: Device) => {
+        // Listen for property changes to update the UI
+        const updateUI = () => {
             row.set_title(device.alias);
-
             statusLabel.set_label(device.connectedStatus);
-
             // Trigger resort when connection status changes
             this._devices_list.invalidate_sort();
-        });
-    }
+        };
 
-    private _removeDevice(devicePath: string) {
-        const elements = this._deviceElementsMap.get(devicePath);
-
-        if (elements) {
-            // Check if the row is actually a child before removing
-            const parent = elements.row.get_parent();
-            if (parent === this._devices_list) {
-                try {
-                    this._devices_list.remove(elements.row);
-                } catch (error) {
-                    log(`Error removing device row: ${error}`);
-                }
-            }
-
-            this._deviceElementsMap.delete(devicePath);
-        }
+        device.connect("notify::alias", updateUI);
+        device.connect("notify::connected", updateUI);
+        device.connect("notify::paired", updateUI);
     }
 
     private async _handleDeviceAction(device: Device) {
         try {
             // Keep track of how many devices are being paired at once
             this._activePairingCount++;
+            device.connecting = true;
 
             if (!device.paired) {
                 // If this is the first device we are pairing, stop discovery.
                 if (this._activePairingCount === 1) {
                     log(`Stopping discovery for pairing with ${device.alias}`);
-                    bluetooth.adapter?.stopDiscovery();
+                    await bluetooth.stopDiscovery();
                 }
 
-                await device.pairDevice();
-                await device.connectDevice();
+                await bluetooth.pairDevice(device.path);
+                await bluetooth.connectDevice(device.path);
             } else if (device.connected) {
-                await device.disconnectDevice();
+                await bluetooth.disconnectDevice(device.path);
             } else {
                 if (this._activePairingCount === 1) {
                     log(`Stopping discovery for connecting to ${device.alias}`);
-                    bluetooth.adapter?.stopDiscovery();
+                    await bluetooth.stopDiscovery();
                 }
 
-                await device.connectDevice();
+                await bluetooth.connectDevice(device.path);
             }
 
+            device.connecting = false;
             this._activePairingCount--;
 
             if (this._activePairingCount === 0) {
-                try {
-                    log(
-                        `Restarting discovery after successful pairing/connection`,
-                    );
-                    bluetooth.adapter?.startDiscovery();
-                } catch (error) {
+                log(`Restarting discovery after successful pairing/connection`);
+                bluetooth.startDiscovery().catch((error) => {
                     log(`Failed to restart discovery after success: ${error}`);
-                }
+                });
             }
         } catch (error) {
+            device.connecting = false;
             this._activePairingCount--;
 
             if (
                 this._activePairingCount === 0 &&
                 (!device.paired || device.connected)
             ) {
-                try {
+                log(
+                    `Restarting discovery after pairing failure for ${device.alias}`,
+                );
+                bluetooth.startDiscovery().catch((restartError) => {
                     log(
-                        `Restarting discovery after pairing failure for ${device.alias}`,
+                        `Failed to restart discovery after error: ${restartError}`,
                     );
-                    bluetooth.adapter?.startDiscovery();
-                } catch (error) {
-                    log(`Failed to restart discovery after error: ${error}`);
-                }
+                });
             }
 
             const action = !device.paired

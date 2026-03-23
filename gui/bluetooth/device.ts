@@ -1,6 +1,8 @@
 import GLib from "gi://GLib?version=2.0";
 import GObject from "gi://GObject?version=2.0";
 
+import { getDeviceTypeFromClass } from "../services/device-metadata.js";
+
 export interface DeviceData {
     path: string;
     mac: string;
@@ -66,8 +68,9 @@ export class Device extends GObject.Object {
     private _trusted!: boolean;
     private _deviceClass!: number;
     private _icon!: string;
-    private _uuids!: string[];
+    private _uuids!: Set<string>;
     private _batteryPercentage!: number;
+    private _connecting: boolean = false;
 
     static {
         GObject.registerClass(
@@ -148,6 +151,13 @@ export class Device extends GObject.Object {
                         100,
                         -1,
                     ),
+                    connecting: GObject.ParamSpec.boolean(
+                        "connecting",
+                        "Connecting",
+                        "Is currently connecting",
+                        GObject.ParamFlags.READWRITE,
+                        false,
+                    ),
                 },
             },
             this,
@@ -165,7 +175,7 @@ export class Device extends GObject.Object {
         this._trusted = data.trusted;
         this._deviceClass = data.deviceClass;
         this._icon = data.icon;
-        this._uuids = data.uuids;
+        this._uuids = new Set(data.uuids);
         this._batteryPercentage = data.batteryPercentage;
     }
 
@@ -202,7 +212,32 @@ export class Device extends GObject.Object {
             this._batteryPercentage = data.batteryPercentage;
             this.notify("battery-percentage");
         }
-        this._uuids = data.uuids;
+        this._uuids = new Set(data.uuids);
+    }
+
+    get connectedStatus(): string {
+        if (this._connected) {
+            return "Connected";
+        }
+        if (this._paired) {
+            return "Disconnected";
+        }
+        return "Not Set Up";
+    }
+
+    get deviceType(): string {
+        return getDeviceTypeFromClass(this._deviceClass);
+    }
+
+    get connecting(): boolean {
+        return this._connecting;
+    }
+
+    set connecting(value: boolean) {
+        if (this._connecting !== value) {
+            this._connecting = value;
+            this.notify("connecting");
+        }
     }
 
     get path(): string {
@@ -232,7 +267,7 @@ export class Device extends GObject.Object {
     get icon(): string {
         return this._icon;
     }
-    get uuids(): string[] {
+    get uuids(): Set<string> {
         return this._uuids;
     }
     get batteryPercentage(): number {

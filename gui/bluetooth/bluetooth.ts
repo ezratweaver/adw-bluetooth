@@ -4,9 +4,11 @@ import GObject from "gi://GObject?version=2.0";
 
 import { Device, parseDeviceData } from "./device.js";
 import { Adapter, parseAdapterData } from "./adapter.js";
+import { ObexManager } from "./obex.js";
 
 export { Device } from "./device.js";
 export { Adapter } from "./adapter.js";
+export { ObexManager } from "./obex.js";
 
 const DAEMON_SERVICE = "com.ezratweaver.AdwBluetoothDaemon";
 const DAEMON_OBJECT_PATH = "/com/ezratweaver/AdwBluetoothDaemon";
@@ -19,6 +21,7 @@ export class BluetoothManager extends GObject.Object {
     private _devices: Gio.ListStore;
     private _adapters: Gio.ListStore;
     private _activeAdapter: Adapter | null = null;
+    private _obex: ObexManager;
 
     static {
         GObject.registerClass(
@@ -29,8 +32,8 @@ export class BluetoothManager extends GObject.Object {
                         "active-adapter",
                         "Active Adapter",
                         "Currently active adapter",
-                        Adapter.$gtype as any,
-                        GObject.ParamFlags.READABLE as any,
+                        GObject.ParamFlags.READABLE as unknown as string,
+                        Adapter.$gtype,
                     ),
                 },
                 Signals: {
@@ -61,6 +64,7 @@ export class BluetoothManager extends GObject.Object {
 
         this._devices = new Gio.ListStore({ item_type: Device.$gtype });
         this._adapters = new Gio.ListStore({ item_type: Adapter.$gtype });
+        this._obex = new ObexManager();
 
         this._proxy = Gio.DBusProxy.new_sync(
             sessionBus,
@@ -141,6 +145,9 @@ export class BluetoothManager extends GObject.Object {
                 if (adapter) {
                     adapter.updateFromDaemon(data);
                 }
+                if (this._activeAdapter?.path === data.path) {
+                    this._activeAdapter.updateFromDaemon(data);
+                }
                 break;
             }
             case "RequestConfirmation": {
@@ -203,7 +210,7 @@ export class BluetoothManager extends GObject.Object {
                 null,
             );
             if (activeResult) {
-                const data = parseAdapterData(activeResult);
+                const data = parseAdapterData(activeResult.get_child_value(0));
                 const [adapter] = this.findAdapterByPath(data.path);
                 this._activeAdapter = adapter ?? new Adapter(data);
             }
@@ -245,6 +252,10 @@ export class BluetoothManager extends GObject.Object {
 
     get activeAdapter(): Adapter | null {
         return this._activeAdapter;
+    }
+
+    get obex(): ObexManager {
+        return this._obex;
     }
 
     // Lookup helpers
@@ -319,7 +330,7 @@ export class BluetoothManager extends GObject.Object {
             new GLib.Variant("(o)", [path]),
         );
         if (result) {
-            const data = parseAdapterData(result);
+            const data = parseAdapterData(result.get_child_value(0));
             const [adapter] = this.findAdapterByPath(data.path);
             this._activeAdapter = adapter ?? new Adapter(data);
             this.notify("active-adapter");
@@ -358,6 +369,10 @@ export class BluetoothManager extends GObject.Object {
                 },
             );
         });
+    }
+
+    destroy(): void {
+        this._obex.destroy();
     }
 }
 

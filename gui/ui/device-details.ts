@@ -55,7 +55,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
         this._paired_row.set_subtitle(device.paired ? "Yes" : "No");
         this._type_row.set_subtitle(device.deviceType);
-        this._address_row.set_subtitle(device.address);
+        this._address_row.set_subtitle(device.mac);
 
         this.device.connect("notify::battery-percentage", () => {
             this.updateBatteryDisplay();
@@ -76,7 +76,7 @@ export class DeviceDetailsModal extends Adw.Window {
         );
 
         // Show send files group only if device supports Object Push
-        if (this.device.uuids.has(BluetoothUUID.OBJECT_PUSH)) {
+        if (this.device.uuids.has(BluetoothUUID.OBJECT_PUSH as string)) {
             this.device.bind_property(
                 "connected",
                 this._send_files_group,
@@ -102,24 +102,29 @@ export class DeviceDetailsModal extends Adw.Window {
 
         this._connection_switch.connect("state-set", (_, switchTurnedOn) => {
             if (switchTurnedOn && !device.connected) {
-                if (bluetooth.adapter?.discovering) {
-                    bluetooth.adapter.stopDiscovery();
+                if (bluetooth.activeAdapter?.discovering) {
+                    bluetooth.stopDiscovery();
                 }
 
-                device.connectDevice().catch((error) => {
-                    log(
-                        `An error occured trying to connect to device: ${error}`
-                    );
-                    this._connection_switch.set_active(false); // Ensure switch is off
-                    device.disconnectDevice(); // Explicity cut connection when timeout/failure occurs
-                });
+                device.connecting = true;
+                bluetooth
+                    .connectDevice(device.path)
+                    .then(() => {
+                        device.connecting = false;
+                    })
+                    .catch((error) => {
+                        device.connecting = false;
+                        log(
+                            `An error occured trying to connect to device: ${error}`
+                        );
+                        this._connection_switch.set_active(false);
+                        bluetooth.disconnectDevice(device.path);
+                    });
             } else if (!switchTurnedOn && device.connected) {
-                try {
-                    device.disconnectDevice();
-                } catch (error) {
+                bluetooth.disconnectDevice(device.path).catch((error) => {
                     log(`Failed to turn off connection: ${error}`);
                     this._connection_switch.set_active(true);
-                }
+                });
             }
         });
 
@@ -153,7 +158,7 @@ export class DeviceDetailsModal extends Adw.Window {
         if (confirmed) {
             try {
                 this.close();
-                await bluetooth.adapter?.removeDevice(this.device.devicePath);
+                await bluetooth.removeDevice(this.device.path);
             } catch (error) {
                 log(`Failed to remove device: ${error}`);
             }
@@ -184,7 +189,7 @@ export class DeviceDetailsModal extends Adw.Window {
 
         let sessionPath: string | null;
         try {
-            sessionPath = await obex.createSession(this.device.address);
+            sessionPath = await obex.createSession(this.device.mac);
         } catch (error) {
             progressDialog.showError(`Failed to create session: ${error}`);
             return;
