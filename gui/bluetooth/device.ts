@@ -14,7 +14,7 @@ export interface DeviceData {
     deviceClass: number;
     icon: string;
     uuids: string[];
-    batteryPercentage: number;
+    batteryPercentage: number | null;
 }
 
 export function parseDeviceData(variant: GLib.Variant): DeviceData {
@@ -29,7 +29,7 @@ export function parseDeviceData(variant: GLib.Variant): DeviceData {
         deviceClass,
         icon,
         uuids,
-        batteryPercentage,
+        rawBattery,
     ] = variant.deep_unpack() as [
         string,
         string,
@@ -54,7 +54,7 @@ export function parseDeviceData(variant: GLib.Variant): DeviceData {
         deviceClass,
         icon,
         uuids,
-        batteryPercentage,
+        batteryPercentage: rawBattery < 0 ? null : rawBattery,
     };
 }
 
@@ -69,7 +69,7 @@ export class Device extends GObject.Object {
     private _deviceClass!: number;
     private _icon!: string;
     private _uuids!: Set<string>;
-    private _batteryPercentage!: number;
+    private _batteryPercentage!: number | null;
     private _connecting: boolean = false;
 
     static {
@@ -145,11 +145,11 @@ export class Device extends GObject.Object {
                     "battery-percentage": GObject.ParamSpec.int(
                         "battery-percentage",
                         "Battery Percentage",
-                        "Battery percentage (-1 if unavailable)",
+                        "Battery percentage (null if unavailable)",
                         GObject.ParamFlags.READWRITE,
-                        -1,
+                        0,
                         100,
-                        -1,
+                        0,
                     ),
                     connecting: GObject.ParamSpec.boolean(
                         "connecting",
@@ -270,7 +270,7 @@ export class Device extends GObject.Object {
     get uuids(): Set<string> {
         return this._uuids;
     }
-    get batteryPercentage(): number {
+    get batteryPercentage(): number | null {
         return this._batteryPercentage;
     }
 }
