@@ -1,7 +1,8 @@
 import Gio from "gi://Gio?version=2.0";
 import GLib from "gi://GLib?version=2.0";
 import GObject from "gi://GObject?version=2.0";
-import { sessionBus } from "./bluetooth.js";
+
+const sessionBus = Gio.bus_get_sync(Gio.BusType.SESSION, null);
 
 export const ORG_BLUEZ_OBEX = "org.bluez.obex";
 export const OBEX_CLIENT_1 = "org.bluez.obex.Client1";
