@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/ezratweaver/adw-bluetooth/daemon/agents"
+	"github.com/ezratweaver/adw-bluetooth/daemon/connection"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -68,6 +69,24 @@ func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) *dbus.E
 
 	daemon.loadDevicesForAdapter(result)
 
+	return nil
+}
+
+func (daemon *AdwBluetoothDaemon) ConnectDevice(path dbus.ObjectPath) *dbus.Error {
+	callErr := connection.SysConnection.Object("org.bluez", path).Call("org.bluez.Device1.Connect", 0).Err
+	if callErr != nil {
+		log.Printf("Failed to connect device %s: %v", path, callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+	return nil
+}
+
+func (daemon *AdwBluetoothDaemon) DisconnectDevice(path dbus.ObjectPath) *dbus.Error {
+	callErr := connection.SysConnection.Object("org.bluez", path).Call("org.bluez.Device1.Disconnect", 0).Err
+	if callErr != nil {
+		log.Printf("Failed to disconnect device %s: %v", path, callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
 	return nil
 }
 
