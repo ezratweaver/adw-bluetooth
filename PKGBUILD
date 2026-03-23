@@ -17,6 +17,7 @@ depends=(
 makedepends=(
   blueprint-compiler
   git
+  go
   meson
   typescript
 )

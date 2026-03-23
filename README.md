@@ -49,14 +49,6 @@ environment.systemPackages = with pkgs; [
 ];
 ```
 
-### Other (Flatpak)
-
-```bash
-flatpak install --user <flatpak-file-name>.flatpak
-```
-
-Download the Flatpak from [releases](https://github.com/ezratweaver/adwaita-bluetooth/releases).
-
 ## Compiling from source
 
 ### Dependencies
@@ -81,15 +73,11 @@ sudo pacman -S dconf gjs glib2 gtk4 hicolor-icon-theme libadwaita blueprint-comp
 
 #### Using Nix
 
-Builds both the GUI and daemon in a fully sandboxed environment. The daemon is built separately via `buildGoModule` and injected into the final output, so no Go toolchain is required in the Meson build when using Nix.
-
 ```bash
 nix build
 ```
 
 #### Using Meson
-
-Requires Go to be installed. The daemon is built as part of the standard Meson build using the vendored dependencies in `daemon/vendor/`.
 
 ```bash
 meson setup builddir
@@ -103,22 +91,4 @@ To skip building the daemon (e.g. if you are building it separately):
 
 ```bash
 meson setup builddir -Dbuild_daemon=false
-```
-
-#### Using Flatpak
-
-```bash
-# Install dependencies
-flatpak install --user flathub org.gnome.Platform//49 org.gnome.Sdk//49
-flatpak install --user flathub org.freedesktop.Sdk.Extension.node20//25.08 org.freedesktop.Sdk.Extension.typescript//25.08
-
-# Build && Install (only in user space)
-flatpak-builder --user --install --force-clean build-dir com.ezratweaver.AdwBluetooth.json
-
-# Run
-flatpak run com.ezratweaver.AdwBluetooth
-
-# Build .flatpak file
-flatpak-builder --repo=repo build-dir com.ezratweaver.AdwBluetooth.json
-flatpak build-bundle repo adw-bluetooth.flatpak com.ezratweaver.AdwBluetooth
 ```
