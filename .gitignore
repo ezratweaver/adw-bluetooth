@@ -6,3 +6,4 @@ node_modules/
 .flatpak-builder/
 /subprojects/blueprint-compiler
 result
+daemon/vendor/

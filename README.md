@@ -19,19 +19,19 @@ A fully featured bluetooth device manager built for tiling window managers like 
 
 ## Features
 
-*   **Device Discovery:** Scan for and discover nearby Bluetooth devices.
-*   **Pairing & Connecting:** Easily pair with and connect to devices.
-*   **Battery Info:** View and monitor device battery information.
-*   **File Transfer:** Send and receive files to and from other devices.
-*   **Multi-Adapter Support:** Switch between adapter hardware.
-*   **Modern UI:** A clean and modern user interface using Adwaita.
-*   **Vim Keybindings:** Navigate and manage devices with vim-like keybindings.
-    *   `j`/`↓`: Move down
-    *   `k`/`↑`: Move up
-    *   `g`: Go to first device
-    *   `Shift+g`: Go to last device
-    *   `Enter`/`Space`: Pair, connect, or disconnect device
-    *   `d`: Toggle discovery mode
+- **Device Discovery:** Scan for and discover nearby Bluetooth devices.
+- **Pairing & Connecting:** Easily pair with and connect to devices.
+- **Battery Info:** View and monitor device battery information.
+- **File Transfer:** Send and receive files to and from other devices.
+- **Multi-Adapter Support:** Switch between adapter hardware.
+- **Modern UI:** A clean and modern user interface using Adwaita.
+- **Vim Keybindings:** Navigate and manage devices with vim-like keybindings.
+  - `j`/`↓`: Move down
+  - `k`/`↑`: Move up
+  - `g`: Go to first device
+  - `Shift+g`: Go to last device
+  - `Enter`/`Space`: Pair, connect, or disconnect device
+  - `d`: Toggle discovery mode
 
 ## Installation
 
@@ -47,20 +47,6 @@ yay -S adw-bluetooth
 environment.systemPackages = with pkgs; [
   adw-bluetooth
 ];
-```
-
-### NixOS (via flake)
-
-Add input to the flake:
-
-```nix
-adw-bluetooth.url = "github:ezratweaver/adwaita-bluetooth";
-```
-
-And in environment.systemPackages add:
-
-```nix
-inputs.adw-bluetooth.packages.${system}.default
 ```
 
 ### Other (Flatpak)
@@ -88,12 +74,14 @@ nix develop
 Install dependencies:
 
 ```bash
-sudo pacman -S dconf gjs glib2 gtk4 hicolor-icon-theme libadwaita blueprint-compiler git meson typescript
+sudo pacman -S dconf gjs glib2 gtk4 hicolor-icon-theme libadwaita blueprint-compiler git meson typescript go
 ```
 
 ### Build Steps
 
 #### Using Nix
+
+Builds both the GUI and daemon in a fully sandboxed environment. The daemon is built separately via `buildGoModule` and injected into the final output, so no Go toolchain is required in the Meson build when using Nix.
 
 ```bash
 nix build
@@ -101,12 +89,20 @@ nix build
 
 #### Using Meson
 
+Requires Go to be installed. The daemon is built as part of the standard Meson build using the vendored dependencies in `daemon/vendor/`.
+
 ```bash
 meson setup builddir
 meson compile -C builddir
 
 # For running locally
 meson compile -C builddir devel
+```
+
+To skip building the daemon (e.g. if you are building it separately):
+
+```bash
+meson setup builddir -Dbuild_daemon=false
 ```
 
 #### Using Flatpak
