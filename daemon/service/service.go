@@ -90,6 +90,70 @@ func (daemon *AdwBluetoothDaemon) DisconnectDevice(path dbus.ObjectPath) *dbus.E
 	return nil
 }
 
+func (daemon *AdwBluetoothDaemon) PairDevice(path dbus.ObjectPath) *dbus.Error {
+	callErr := connection.SysConnection.Object("org.bluez", path).Call("org.bluez.Device1.Pair", 0).Err
+	if callErr != nil {
+		log.Printf("Failed to pair device %s: %v", path, callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+	return nil
+}
+
+func (daemon *AdwBluetoothDaemon) RemoveDevice(path dbus.ObjectPath) *dbus.Error {
+	callErr := connection.SysConnection.Object("org.bluez", daemon.activeAdapter).Call("org.bluez.Adapter1.RemoveDevice", 0, path).Err
+	if callErr != nil {
+		log.Printf("Failed to remove device %s: %v", path, callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+	return nil
+}
+
+func (daemon *AdwBluetoothDaemon) SetTrusted(path dbus.ObjectPath, trusted bool) *dbus.Error {
+	callErr := connection.SysConnection.Object("org.bluez", path).Call(
+		"org.freedesktop.DBus.Properties.Set", 0,
+		"org.bluez.Device1", "Trusted", dbus.MakeVariant(trusted),
+	).Err
+	if callErr != nil {
+		log.Printf("Failed to set trusted on device %s: %v", path, callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+	return nil
+}
+
+func (daemon *AdwBluetoothDaemon) StartDiscovery() *dbus.Error {
+	obj := connection.SysConnection.Object("org.bluez", daemon.activeAdapter)
+
+	if callErr := obj.Call("org.bluez.Adapter1.StartDiscovery", 0).Err; callErr != nil {
+		log.Printf("Failed to start discovery: %v", callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+
+	if callErr := obj.Call("org.freedesktop.DBus.Properties.Set", 0,
+		"org.bluez.Adapter1", "Discoverable", dbus.MakeVariant(true),
+	).Err; callErr != nil {
+		log.Printf("Failed to set discoverable: %v", callErr)
+	}
+
+	return nil
+}
+
+func (daemon *AdwBluetoothDaemon) StopDiscovery() *dbus.Error {
+	obj := connection.SysConnection.Object("org.bluez", daemon.activeAdapter)
+
+	if callErr := obj.Call("org.bluez.Adapter1.StopDiscovery", 0).Err; callErr != nil {
+		log.Printf("Failed to stop discovery: %v", callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+
+	if callErr := obj.Call("org.freedesktop.DBus.Properties.Set", 0,
+		"org.bluez.Adapter1", "Discoverable", dbus.MakeVariant(false),
+	).Err; callErr != nil {
+		log.Printf("Failed to unset discoverable: %v", callErr)
+	}
+
+	return nil
+}
+
 func NewAdwBluetoothDaemon() *AdwBluetoothDaemon {
 	daemon := &AdwBluetoothDaemon{}
 
