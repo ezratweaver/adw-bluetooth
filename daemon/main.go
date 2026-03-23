@@ -16,7 +16,7 @@ import (
 )
 
 var ServiceNode = &introspect.Node{
-	Name: config.ObjectPath,
+	Name: "/",
 	Interfaces: []introspect.Interface{
 		introspect.IntrospectData,
 		{
