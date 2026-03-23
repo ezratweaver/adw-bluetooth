@@ -2,6 +2,7 @@ package connection
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/ezratweaver/adw-bluetooth/daemon/config"
@@ -39,5 +40,9 @@ func SetupBluezObject() {
 }
 
 func EmitDaemonSignal(signalName string, values ...any) error {
-	return SessConnection.Emit(config.ObjectPath, config.Iface+"."+signalName, values...)
+	err := SessConnection.Emit(config.ObjectPath, config.Iface+"."+signalName, values...)
+	if err != nil {
+		log.Printf("Failed to emit %s: %v", signalName, err)
+	}
+	return err
 }

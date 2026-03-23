@@ -72,9 +72,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 	if props, isAdapter := interfaces["org.bluez.Adapter1"]; isAdapter {
 		a := adapterFromProps(path, props)
 		daemon.adapters[path] = a
-		if err := connection.EmitDaemonSignal("AdapterAdded", a); err != nil {
-			log.Printf("Failed to emit AdapterAdded: %v", err)
-		}
+		connection.EmitDaemonSignal("AdapterAdded", a)
 		return
 	}
 
@@ -95,9 +93,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 	d := deviceFromProps(path, device, interfaces)
 	daemon.devices[path] = d
 
-	if err := connection.EmitDaemonSignal("DeviceAdded", d); err != nil {
-		log.Printf("Failed to emit DeviceAdded: %v", err)
-	}
+	connection.EmitDaemonSignal("DeviceAdded", d)
 }
 
 func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
@@ -117,9 +113,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 
 	if slices.Contains(interfaces, "org.bluez.Adapter1") {
 		delete(daemon.adapters, path)
-		if err := connection.EmitDaemonSignal("AdapterRemoved", path); err != nil {
-			log.Printf("Failed to emit AdapterRemoved: %v", err)
-		}
+		connection.EmitDaemonSignal("AdapterRemoved", path)
 		return
 	}
 
@@ -135,9 +129,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 
 	delete(daemon.devices, path)
 
-	if err := connection.EmitDaemonSignal("DeviceRemoved", path); err != nil {
-		log.Printf("Failed to emit DeviceRemoved: %v", err)
-	}
+	connection.EmitDaemonSignal("DeviceRemoved", path)
 }
 
 func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
@@ -181,9 +173,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 		}
 		if updated {
 			daemon.adapters[path] = a
-			if err := connection.EmitDaemonSignal("AdapterUpdated", a); err != nil {
-				log.Printf("Failed to emit AdapterUpdated: %v", err)
-			}
+			connection.EmitDaemonSignal("AdapterUpdated", a)
 		}
 		return
 	}
@@ -252,9 +242,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 	// If its a regular device update, just update
 	if updated && isNormal {
 		daemon.devices[path] = device
-		if err := connection.EmitDaemonSignal("DeviceUpdated", device); err != nil {
-			log.Printf("Failed to emit DeviceUpdated: %v", err)
-		}
+		connection.EmitDaemonSignal("DeviceUpdated", device)
 	}
 
 	// If its a limbo device that changed, see if it finally has a name
@@ -265,9 +253,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 
 		delete(daemon.limboDevices, path)
 
-		if err := connection.EmitDaemonSignal("DeviceAdded", device); err != nil {
-			log.Printf("Failed to emit DeviceAdded: %v", err)
-		}
+		connection.EmitDaemonSignal("DeviceAdded", device)
 	}
 }
 

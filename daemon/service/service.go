@@ -73,20 +73,14 @@ func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) *dbus.E
 
 	daemon.loadDevicesForAdapter(result)
 
-	if err := connection.EmitDaemonSignal("AdapterUpdated", daemon.adapters[path]); err != nil {
-		log.Printf("Failed to emit AdapterUpdated: %v", err)
-	}
+	connection.EmitDaemonSignal("AdapterUpdated", daemon.adapters[path])
 
 	for devicePath := range oldDevices {
-		if err := connection.EmitDaemonSignal("DeviceRemoved", devicePath); err != nil {
-			log.Printf("Failed to emit DeviceRemoved: %v", err)
-		}
+		connection.EmitDaemonSignal("DeviceRemoved", devicePath)
 	}
 
 	for _, device := range daemon.devices {
-		if err := connection.EmitDaemonSignal("DeviceAdded", device); err != nil {
-			log.Printf("Failed to emit DeviceAdded: %v", err)
-		}
+		connection.EmitDaemonSignal("DeviceAdded", device)
 	}
 
 	return nil
