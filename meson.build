@@ -16,6 +16,21 @@ tsc = find_program('tsc', required: true)
 subdir('data')
 subdir('gui')
 
+if get_option('build_daemon')
+  go = find_program('go', required: true)
+  daemon = custom_target('daemon',
+    input: run_command(
+      'bash', '-c', 'find daemon -name "*.go" | sort',
+      check: true,
+    ).stdout().strip().split('\n'),
+    output: 'adw-bluetooth-daemon',
+    command: [go, 'build', '-C', meson.project_source_root() / 'daemon', '-o', '@OUTPUT@', '-mod=vendor', '.'],
+    install: true,
+    install_dir: get_option('libexecdir'),
+    build_by_default: true,
+  )
+endif
+
 gnome.post_install(
   glib_compile_schemas: true,
   gtk_update_icon_cache: false, # Enable if we start shipping with icons

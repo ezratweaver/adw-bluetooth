@@ -1,0 +1,11 @@
+[Unit]
+Description=AdwBluetooth Daemon
+After=bluetooth.target
+
+[Service]
+Type=dbus
+BusName=com.ezratweaver.AdwBluetoothDaemon
+ExecStart=@libexecdir@/adw-bluetooth-daemon
+
+[Install]
+WantedBy=default.target

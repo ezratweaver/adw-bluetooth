@@ -1,3 +1,14 @@
+service_conf = configuration_data()
+service_conf.set('libexecdir', join_paths(get_option('prefix'), get_option('libexecdir')))
+
+configure_file(
+  input: 'com.ezratweaver.AdwBluetoothDaemon.service.in',
+  output: 'com.ezratweaver.AdwBluetoothDaemon.service',
+  configuration: service_conf,
+  install: true,
+  install_dir: join_paths(get_option('sysconfdir'), 'systemd/user')
+)
+
 gsettings_schema = 'com.ezratweaver.AdwBluetooth.gschema.xml'
 
 # Compile schemas for development

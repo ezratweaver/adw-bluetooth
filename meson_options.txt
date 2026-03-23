@@ -1,0 +1,5 @@
+option('build_daemon',
+  type: 'boolean',
+  value: true,
+  description: 'Build and install the Go daemon (disable when the daemon is built separately, e.g. via Nix buildGoModule)'
+)
