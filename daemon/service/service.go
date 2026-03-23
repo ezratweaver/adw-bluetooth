@@ -68,7 +68,25 @@ func (daemon *AdwBluetoothDaemon) SetActiveAdapter(path dbus.ObjectPath) *dbus.E
 		return dbus.NewError("org.freedesktop.DBus.Error.Failed", []any{"failed to reload devices"})
 	}
 
+	oldDevices := daemon.devices
+
 	daemon.loadDevicesForAdapter(result)
+
+	if err := connection.EmitDaemonSignal("AdapterUpdated", daemon.adapters[path]); err != nil {
+		log.Printf("Failed to emit AdapterUpdated: %v", err)
+	}
+
+	for devicePath := range oldDevices {
+		if err := connection.EmitDaemonSignal("DeviceRemoved", devicePath); err != nil {
+			log.Printf("Failed to emit DeviceRemoved: %v", err)
+		}
+	}
+
+	for _, device := range daemon.devices {
+		if err := connection.EmitDaemonSignal("DeviceAdded", device); err != nil {
+			log.Printf("Failed to emit DeviceAdded: %v", err)
+		}
+	}
 
 	return nil
 }
