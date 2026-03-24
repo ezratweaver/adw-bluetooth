@@ -76,31 +76,36 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 		daemon.adapters[path] = a
 		logger.L.Info("Adapter added", "path", path, "alias", a.Alias)
 		connection.EmitDaemonSignal("AdapterAdded", a)
-		return
 	}
 
-	if !strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
-		return
+	// if its an interface of the current adapter
+	if strings.HasPrefix(string(path), string(daemon.activeAdapter)+"/") {
+
+		if device, isDevice := interfaces["org.bluez.Device1"]; isDevice {
+			d := deviceFromProps(path, device, interfaces)
+			name, _ := device["Name"].Value().(string)
+			if name == "" {
+				daemon.limboDevices[path] = d
+				logger.L.Debug("Device added to limbo (no name yet)", "path", path)
+			} else {
+				daemon.devices[path] = d
+				logger.L.Info("Device added", "path", path, "name", d.Name, "mac", d.MAC)
+				connection.EmitDaemonSignal("DeviceAdded", d)
+			}
+		}
+
+		if battery, hasBattery := interfaces["org.bluez.Battery1"]; hasBattery {
+			if existingDevice, exists := daemon.devices[path]; exists {
+				if pct, ok := battery["Percentage"].Value().(byte); ok {
+					existingDevice.BatteryPercentage = int16(pct)
+					daemon.devices[path] = existingDevice
+					connection.EmitDaemonSignal("DeviceUpdated", existingDevice)
+					logger.L.Debug("Battery interface added to device", "path", path, "battery", pct)
+				}
+			}
+		}
 	}
 
-	device, isDevice := interfaces["org.bluez.Device1"]
-	if !isDevice {
-		return
-	}
-
-	name, _ := device["Name"].Value().(string)
-	if name == "" {
-		d := deviceFromProps(path, device, interfaces)
-		daemon.limboDevices[path] = d
-		logger.L.Debug("Device added to limbo (no name yet)", "path", path)
-		return
-	}
-
-	d := deviceFromProps(path, device, interfaces)
-	daemon.devices[path] = d
-
-	logger.L.Info("Device added", "path", path, "name", d.Name, "mac", d.MAC)
-	connection.EmitDaemonSignal("DeviceAdded", d)
 }
 
 func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
@@ -122,24 +127,27 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 		delete(daemon.adapters, path)
 		logger.L.Info("Adapter removed", "path", path)
 		connection.EmitDaemonSignal("AdapterRemoved", path)
-		return
 	}
 
-	if !slices.Contains(interfaces, "org.bluez.Device1") {
-		return
+	if slices.Contains(interfaces, "org.bluez.Device1") {
+		if _, isLimboDevice := daemon.limboDevices[path]; isLimboDevice {
+			delete(daemon.limboDevices, path)
+			logger.L.Debug("Limbo device removed", "path", path)
+		} else {
+			delete(daemon.devices, path)
+			logger.L.Info("Device removed", "path", path)
+			connection.EmitDaemonSignal("DeviceRemoved", path)
+		}
 	}
 
-	_, isLimboDevice := daemon.limboDevices[path]
-	if isLimboDevice {
-		delete(daemon.limboDevices, path)
-		logger.L.Debug("Limbo device removed", "path", path)
-		return
+	if slices.Contains(interfaces, "org.bluez.Battery1") {
+		if existingDevice, exists := daemon.devices[path]; exists {
+			existingDevice.BatteryPercentage = -1
+			daemon.devices[path] = existingDevice
+			connection.EmitDaemonSignal("DeviceUpdated", existingDevice)
+			logger.L.Debug("Battery interface removed from device", "path", path)
+		}
 	}
-
-	delete(daemon.devices, path)
-
-	logger.L.Info("Device removed", "path", path)
-	connection.EmitDaemonSignal("DeviceRemoved", path)
 }
 
 func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
