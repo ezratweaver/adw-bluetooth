@@ -13,7 +13,7 @@
         pname = "adw-bluetooth-daemon";
         version = "1.0.0";
         src = ./daemon;
-        vendorHash = "";
+        vendorHash = "sha256-7tiSwNhq6e4LEh4lUkfh2i4tEdWWL6TxQpYYwYKsfog=";
       };
     in
     {
@@ -45,6 +45,39 @@
           install -Dm755 ${daemon}/bin/daemon $out/libexec/adw-bluetooth-daemon
         '';
       };
+
+      # ---- NixOS module ----
+      nixosModules.default =
+        {
+          config,
+          lib,
+          pkgs,
+          ...
+        }:
+        let
+          cfg = config.services.adw-bluetooth;
+          pkg = self.packages.${pkgs.system}.default;
+        in
+        {
+          options.services.adw-bluetooth.enable = lib.mkEnableOption "Adwaita Bluetooth daemon";
+
+          config = lib.mkIf cfg.enable {
+            systemd.user.services.adw-bluetooth-daemon = {
+              description = "AdwBluetooth Daemon";
+              wantedBy = [ "default.target" ];
+              after = [ "bluetooth.target" ];
+              serviceConfig = {
+                Type = "dbus";
+                BusName = "com.ezratweaver.AdwBluetoothDaemon";
+                ExecStart = "${pkg}/libexec/adw-bluetooth-daemon";
+              };
+            };
+
+            # Install the package and D-Bus service
+            environment.systemPackages = [ pkg ];
+            services.dbus.packages = [ pkg ];
+          };
+        };
 
       # ---- Dev shell ----
       devShells.${system}.default = pkgs.mkShell {
