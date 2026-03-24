@@ -1,7 +1,7 @@
 import Adw from "gi://Adw";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
-import { bluetooth } from "../bluetooth/bluetooth.js";
+import { Adapter, bluetooth } from "../bluetooth/bluetooth.js";
 import { Device } from "../bluetooth/device.js";
 import { DeviceDetailsModal } from "./device-details.js";
 import { PinConfirmationDialog } from "./pin-confirmation.js";
@@ -25,14 +25,7 @@ export class Window extends Adw.ApplicationWindow {
     private _toast_overlay!: Adw.ToastOverlay;
     private _adapter_list!: Gio.Menu;
 
-    private _deviceElementsMap: Map<
-        string,
-        {
-            row: Adw.ActionRow;
-            spinner: Adw.Spinner;
-            statusLabel: Gtk.Label;
-        }
-    > = new Map();
+    private _deviceSorter?: Gtk.CustomSorter;
 
     private _incomingTransferManager!: IncomingTransferManager;
     private _vimNavigator!: VimNavigator;
@@ -184,23 +177,8 @@ export class Window extends Adw.ApplicationWindow {
         this._enabled_state.set_visible(bluetooth.activeAdapter.powered);
 
         this._setupPropertyBindings();
-        this._setupEventHandlers();
+        this._setupAgentHandlers();
         this._setupDeviceList();
-    }
-
-    private _clearDeviceList(): void {
-        this._deviceElementsMap.forEach((elements) => {
-            const parent = elements.row.get_parent();
-            if (parent === this._devices_list) {
-                this._devices_list.remove(elements.row);
-            }
-        });
-        this._deviceElementsMap.clear();
-    }
-
-    private _resetWindow(): void {
-        this._clearDeviceList();
-        this._setupAdapterBindings();
     }
 
     private _showNoAdapterState(): void {
@@ -259,15 +237,14 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupAdapterSubMenu() {
-        // Collect adapters from ListStore and sort by name (hci0, hci1, etc.)
         const adapters: { path: string; alias: string; name: string }[] = [];
+
         for (let i = 0; i < bluetooth.adapters.get_n_items(); i++) {
-            const adapter = bluetooth.adapters.get_item(
-                i,
-            ) as import("../bluetooth/adapter.js").Adapter;
+            const adapter = bluetooth.adapters.get_item(i) as Adapter;
             const name = adapter.path.split("/").slice(-1)[0];
             adapters.push({ path: adapter.path, alias: adapter.alias, name });
         }
+
         adapters.sort((a, b) => a.name.localeCompare(b.name));
 
         for (const {
@@ -306,7 +283,7 @@ export class Window extends Adw.ApplicationWindow {
                     action.set_state(new GLib.Variant("b", true));
 
                     bluetooth.setActiveAdapter(adapterPath);
-                    this._resetWindow();
+                    this._setupAdapterBindings();
                 }
             });
 
@@ -409,51 +386,9 @@ export class Window extends Adw.ApplicationWindow {
         );
     }
 
-    private _deviceAddBuffer: string[] = [];
-    private _deviceAddIdleId = 0;
-
-    private _setupEventHandlers(): void {
+    private _setupAgentHandlers(): void {
         if (!bluetooth.activeAdapter) return;
 
-        // Device list change signals from BluetoothManager
-        bluetooth.devices.connect(
-            "items-changed",
-            (_, position, removed, added) => {
-                // Handle removed items
-                for (let i = 0; i < removed; i++) {
-                    // We need to track which devices were at this position
-                    // For simplicity, we'll rely on the device path from the map
-                }
-
-                // Handle added items - add to buffer for batched UI updates
-                for (let i = 0; i < added; i++) {
-                    const device = bluetooth.devices.get_item(
-                        position + i,
-                    ) as Device;
-                    if (device) {
-                        this._deviceAddBuffer.push(device.path);
-                    }
-                }
-
-                // Schedule batched UI update
-                if (added > 0 && this._deviceAddIdleId === 0) {
-                    this._deviceAddIdleId = GLib.idle_add(
-                        GLib.PRIORITY_DEFAULT_IDLE,
-                        () => {
-                            this._deviceAddBuffer.forEach((devicePath) =>
-                                this._addDevice(devicePath),
-                            );
-
-                            this._deviceAddBuffer = [];
-                            this._deviceAddIdleId = 0;
-                            return GLib.SOURCE_REMOVE;
-                        },
-                    );
-                }
-            },
-        );
-
-        // Agent event listeners - signals come from BluetoothManager now
         bluetooth.connect(
             "request-confirmation",
             (_, devicePath: string, passkey: number) =>
@@ -518,11 +453,10 @@ export class Window extends Adw.ApplicationWindow {
          * 2. Known but not connected devices second
          * 3. Unknown/non paired devices last
          */
-        this._devices_list.set_sort_func((row1, row2) => {
-            const device1 = findDeviceByPath(row1.name);
-            const device2 = findDeviceByPath(row2.name);
-
-            if (!device1 || !device2) return 0;
+        this._deviceSorter = new Gtk.CustomSorter();
+        this._deviceSorter.set_sort_func((a, b) => {
+            const device1 = a as Device;
+            const device2 = b as Device;
 
             if (device1.connected && !device2.connected) return -1;
             if (!device1.connected && device2.connected) return 1;
@@ -533,36 +467,59 @@ export class Window extends Adw.ApplicationWindow {
             return 0;
         });
 
-        // Add existing devices from the ListStore
-        for (let i = 0; i < bluetooth.devices.get_n_items(); i++) {
-            const device = bluetooth.devices.get_item(i) as Device;
-            this._addDevice(device.path);
-        }
+        const sortedModel = new Gtk.SortListModel({
+            model: bluetooth.devices,
+            sorter: this._deviceSorter,
+        });
+
+        this._devices_list.bind_model(sortedModel, (item) => {
+            const device = item as Device;
+            const row = this._createDeviceRow(device);
+
+            row.connect("activated", () => {
+                if (!device.connecting) {
+                    if (device.paired) {
+                        this._showDeviceDetails(device);
+                    } else {
+                        this._handleDeviceAction(device);
+                    }
+                }
+            });
+
+            // Trigger re-sort when connection status changes
+            device.connect("notify::connected", () => {
+                this._deviceSorter?.changed(Gtk.SorterChange.DIFFERENT);
+            });
+
+            device.connect("notify::paired", () => {
+                this._deviceSorter?.changed(Gtk.SorterChange.DIFFERENT);
+            });
+
+            return row;
+        });
     }
 
-    private _createDeviceRow(device: Device): {
-        row: Adw.ActionRow;
-        spinner: Adw.Spinner;
-        statusLabel: Gtk.Label;
-    } {
+    private _createDeviceRow(device: Device): Adw.ActionRow {
         const row = new Adw.ActionRow({
             name: device.path,
-            title: device.alias,
             activatable: true,
         });
 
         row.set_can_focus(false);
 
-        const statusLabel = new Gtk.Label({
-            label: device.connectedStatus,
-        });
-
-        const spinner = new Adw.Spinner({
-            visible: false,
-        });
+        const statusLabel = new Gtk.Label({ label: device.connectedStatus });
+        const spinner = new Adw.Spinner({ visible: false });
 
         row.add_suffix(statusLabel);
         row.add_suffix(spinner);
+
+        // Bind device properties to UI
+        device.bind_property(
+            "alias",
+            row,
+            "title",
+            GObject.BindingFlags.SYNC_CREATE,
+        );
 
         device.bind_property(
             "connecting",
@@ -579,7 +536,13 @@ export class Window extends Adw.ApplicationWindow {
                 GObject.BindingFlags.INVERT_BOOLEAN,
         );
 
-        return { row, spinner, statusLabel };
+        // Update status label when connected/paired changes
+        const updateStatus = () =>
+            statusLabel.set_label(device.connectedStatus);
+        device.connect("notify::connected", updateStatus);
+        device.connect("notify::paired", updateStatus);
+
+        return row;
     }
 
     // Dialog methods
@@ -678,51 +641,6 @@ export class Window extends Adw.ApplicationWindow {
     private _showDeviceDetails(device: Device) {
         const detailsWindow = new DeviceDetailsModal(device, this);
         detailsWindow.present();
-    }
-
-    // Device management methods
-    private _addDevice(devicePath: string) {
-        // Check if device already exists in the map
-        if (this._deviceElementsMap.has(devicePath)) {
-            return;
-        }
-
-        const device = findDeviceByPath(devicePath);
-        if (!device) {
-            return;
-        }
-
-        const { row, spinner, statusLabel } = this._createDeviceRow(device);
-
-        this._deviceElementsMap.set(device.path, {
-            row,
-            spinner,
-            statusLabel,
-        });
-
-        row.connect("activated", () => {
-            if (!device.connecting) {
-                if (device.paired) {
-                    this._showDeviceDetails(device);
-                } else {
-                    this._handleDeviceAction(device);
-                }
-            }
-        });
-
-        this._devices_list.append(row);
-
-        // Listen for property changes to update the UI
-        const updateUI = () => {
-            row.set_title(device.alias);
-            statusLabel.set_label(device.connectedStatus);
-            // Trigger resort when connection status changes
-            this._devices_list.invalidate_sort();
-        };
-
-        device.connect("notify::alias", updateUI);
-        device.connect("notify::connected", updateUI);
-        device.connect("notify::paired", updateUI);
     }
 
     private async _handleDeviceAction(device: Device) {

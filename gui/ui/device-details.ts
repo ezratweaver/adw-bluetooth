@@ -121,10 +121,17 @@ export class DeviceDetailsModal extends Adw.Window {
                         bluetooth.disconnectDevice(device.path);
                     });
             } else if (!switchTurnedOn && device.connected) {
-                bluetooth.disconnectDevice(device.path).catch((error) => {
-                    log(`Failed to turn off connection: ${error}`);
-                    this._connection_switch.set_active(true);
-                });
+                device.connecting = true;
+                bluetooth
+                    .disconnectDevice(device.path)
+                    .then(() => {
+                        device.connecting = false;
+                    })
+                    .catch((error) => {
+                        device.connecting = false;
+                        log(`Failed to turn off connection: ${error}`);
+                        this._connection_switch.set_active(true);
+                    });
             }
         });
 
