@@ -9,6 +9,14 @@ configure_file(
   install_dir: join_paths(get_option('sysconfdir'), 'systemd/user')
 )
 
+configure_file(
+  input: 'com.ezratweaver.AdwBluetoothDaemon.dbus.service.in',
+  output: 'com.ezratweaver.AdwBluetoothDaemon.service',
+  configuration: service_conf,
+  install: true,
+  install_dir: join_paths(get_option('datadir'), 'dbus-1/services')
+)
+
 gsettings_schema = 'com.ezratweaver.AdwBluetooth.gschema.xml'
 
 # Compile schemas for development
