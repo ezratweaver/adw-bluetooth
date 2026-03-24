@@ -1,8 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"flag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,6 +9,7 @@ import (
 	"github.com/ezratweaver/adw-bluetooth/daemon/agents"
 	"github.com/ezratweaver/adw-bluetooth/daemon/config"
 	"github.com/ezratweaver/adw-bluetooth/daemon/connection"
+	"github.com/ezratweaver/adw-bluetooth/daemon/logger"
 	"github.com/ezratweaver/adw-bluetooth/daemon/service"
 	"github.com/godbus/dbus/v5"
 	"github.com/godbus/dbus/v5/introspect"
@@ -95,25 +95,33 @@ var ServiceNode = &introspect.Node{
 func registerDaemonOnDBus(daemon *service.AdwBluetoothDaemon) {
 	err := connection.SessConnection.Export(daemon, config.ObjectPath, config.Iface)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to export service to session bus:", err)
+		logger.L.Error("Failed to export service to session bus", "err", err)
 		os.Exit(1)
 	}
 
 	err = connection.SessConnection.Export(introspect.NewIntrospectable(ServiceNode), config.ObjectPath, "org.freedesktop.DBus.Introspectable")
 	if err != nil {
-		log.Fatalf("Failed to export introspection: %v", err)
+		logger.L.Error("Failed to export introspection", "err", err)
+		os.Exit(1)
 	}
 
 	reply, err := connection.SessConnection.RequestName(config.ServiceName, dbus.NameFlagDoNotQueue)
 	if err != nil {
-		log.Fatalf("Failed to request name: %v", err)
+		logger.L.Error("Failed to request D-Bus name", "err", err)
+		os.Exit(1)
 	}
 	if reply != dbus.RequestNameReplyPrimaryOwner {
-		log.Fatalf("Name already taken: %s", config.ServiceName)
+		logger.L.Error("D-Bus name already taken", "name", config.ServiceName)
+		os.Exit(1)
 	}
 }
 
 func main() {
+	debug := flag.Bool("debug", false, "enable debug-level logging")
+	flag.Parse()
+
+	logger.Init(*debug)
+
 	connection.SetupDBusConnections()
 
 	defer connection.SysConnection.Close()
@@ -126,7 +134,7 @@ func main() {
 	 */
 	err := agents.RegisterBluetoothAgent()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to register bluetooth agent:", err)
+		logger.L.Error("Failed to register bluetooth agent", "err", err)
 		os.Exit(1)
 	}
 
@@ -140,8 +148,7 @@ func main() {
 	/*
 	* Idle and wait for DBus calls
 	 */
-	log.Printf("Service running on session bus at %s\n\n", config.ObjectPath)
-	log.Println("Awaiting D-Bus calls...")
+	logger.L.Info("Service running", "path", config.ObjectPath)
 
 	// Wait for SIGINT or SIGTERM
 	sig := make(chan os.Signal, 1)
@@ -150,8 +157,8 @@ func main() {
 
 	err = agents.UnregisterBluetoothAgent()
 	if err != nil {
-		log.Printf("Failed to unregister Bluetooth agent: %v", err)
+		logger.L.Error("Failed to unregister Bluetooth agent", "err", err)
 	}
 
-	log.Println("Shutting down.")
+	logger.L.Info("Shutting down.")
 }

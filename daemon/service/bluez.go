@@ -1,11 +1,11 @@
 package service
 
 import (
-	"log"
 	"slices"
 	"strings"
 
 	"github.com/ezratweaver/adw-bluetooth/daemon/connection"
+	"github.com/ezratweaver/adw-bluetooth/daemon/logger"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -40,6 +40,8 @@ func (daemon *AdwBluetoothDaemon) startBlueZListener() {
 	ch := make(chan *dbus.Signal, 16)
 	connection.SysConnection.Signal(ch)
 
+	logger.L.Debug("BlueZ signal listener started")
+
 	go func() {
 		for signal := range ch {
 			switch signal.Name {
@@ -72,6 +74,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 	if props, isAdapter := interfaces["org.bluez.Adapter1"]; isAdapter {
 		a := adapterFromProps(path, props)
 		daemon.adapters[path] = a
+		logger.L.Info("Adapter added", "path", path, "alias", a.Alias)
 		connection.EmitDaemonSignal("AdapterAdded", a)
 		return
 	}
@@ -87,12 +90,16 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 
 	name, _ := device["Name"].Value().(string)
 	if name == "" {
+		d := deviceFromProps(path, device, interfaces)
+		daemon.limboDevices[path] = d
+		logger.L.Debug("Device added to limbo (no name yet)", "path", path)
 		return
 	}
 
 	d := deviceFromProps(path, device, interfaces)
 	daemon.devices[path] = d
 
+	logger.L.Info("Device added", "path", path, "name", d.Name, "mac", d.MAC)
 	connection.EmitDaemonSignal("DeviceAdded", d)
 }
 
@@ -113,6 +120,7 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 
 	if slices.Contains(interfaces, "org.bluez.Adapter1") {
 		delete(daemon.adapters, path)
+		logger.L.Info("Adapter removed", "path", path)
 		connection.EmitDaemonSignal("AdapterRemoved", path)
 		return
 	}
@@ -124,11 +132,13 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 	_, isLimboDevice := daemon.limboDevices[path]
 	if isLimboDevice {
 		delete(daemon.limboDevices, path)
+		logger.L.Debug("Limbo device removed", "path", path)
 		return
 	}
 
 	delete(daemon.devices, path)
 
+	logger.L.Info("Device removed", "path", path)
 	connection.EmitDaemonSignal("DeviceRemoved", path)
 }
 
@@ -166,10 +176,12 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 		if v, ok := changed["Powered"].Value().(bool); ok && a.Powered != v {
 			a.Powered = v
 			updated = true
+			logger.L.Info("Adapter power changed", "path", path, "powered", v)
 		}
 		if v, ok := changed["Discovering"].Value().(bool); ok && a.Discovering != v {
 			a.Discovering = v
 			updated = true
+			logger.L.Info("Adapter discovery changed", "path", path, "discovering", v)
 		}
 		if updated {
 			daemon.adapters[path] = a
@@ -187,7 +199,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 
 	switch {
 	case isNormal && isLimbo:
-		log.Println("Device exists both as limbo and regular device!")
+		logger.L.Warn("Device exists as both limbo and regular", "path", path)
 		return
 	case !isNormal && !isLimbo:
 		return
@@ -210,14 +222,17 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 		if v, ok := changed["Connected"].Value().(bool); ok && device.Connected != v {
 			device.Connected = v
 			updated = true
+			logger.L.Info("Device connection changed", "path", path, "connected", v)
 		}
 		if v, ok := changed["Paired"].Value().(bool); ok && device.Paired != v {
 			device.Paired = v
 			updated = true
+			logger.L.Info("Device paired changed", "path", path, "paired", v)
 		}
 		if v, ok := changed["Trusted"].Value().(bool); ok && device.Trusted != v {
 			device.Trusted = v
 			updated = true
+			logger.L.Debug("Device trusted changed", "path", path, "trusted", v)
 		}
 		if v, ok := changed["Class"].Value().(uint32); ok && device.Class != v {
 			device.Class = v
@@ -236,6 +251,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 		if v, ok := changed["Percentage"].Value().(byte); ok {
 			device.BatteryPercentage = int16(v)
 			updated = true
+			logger.L.Debug("Device battery updated", "path", path, "battery", v)
 		}
 	}
 
@@ -253,6 +269,7 @@ func (daemon *AdwBluetoothDaemon) handlePropertiesChanged(signal *dbus.Signal) {
 
 		delete(daemon.limboDevices, path)
 
+		logger.L.Info("Limbo device promoted", "path", path, "name", newName)
 		connection.EmitDaemonSignal("DeviceAdded", device)
 	}
 }
@@ -262,7 +279,8 @@ func (daemon *AdwBluetoothDaemon) initializeAdaptersAndDevices() {
 
 	result, err := getManagedObjects()
 	if err != nil {
-		log.Fatalf("Failed to get managed objects from bluez: %v", err)
+		logger.L.Error("Failed to get managed objects from BlueZ", "err", err)
+		panic(err)
 	}
 
 	for path, interfaces := range result {
@@ -273,8 +291,11 @@ func (daemon *AdwBluetoothDaemon) initializeAdaptersAndDevices() {
 		daemon.adapters[path] = adapterFromProps(path, props)
 		if daemon.activeAdapter == "" {
 			daemon.activeAdapter = path
+			logger.L.Info("Active adapter set", "path", path)
 		}
 	}
+
+	logger.L.Info("Adapters initialized", "count", len(daemon.adapters))
 
 	daemon.loadDevicesForAdapter(result)
 }
@@ -302,4 +323,10 @@ func (daemon *AdwBluetoothDaemon) loadDevicesForAdapter(mangedObjects managedObj
 			daemon.devices[path] = deviceObj
 		}
 	}
+
+	logger.L.Info("Devices loaded for adapter",
+		"adapter", daemon.activeAdapter,
+		"devices", len(daemon.devices),
+		"limbo", len(daemon.limboDevices),
+	)
 }
