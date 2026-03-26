@@ -9,12 +9,7 @@ export interface AdapterData {
 }
 
 export function parseAdapterData(variant: GLib.Variant): AdapterData {
-    const [path, alias, powered, discovering] = variant.deep_unpack() as [
-        string,
-        string,
-        boolean,
-        boolean,
-    ];
+    const [path, alias, powered, discovering] = variant.deep_unpack() as any;
     return { path, alias, powered, discovering };
 }
 
@@ -89,12 +84,15 @@ export class Adapter extends GObject.Object {
     get path(): string {
         return this._path;
     }
+
     get alias(): string {
         return this._alias;
     }
+
     get powered(): boolean {
         return this._powered;
     }
+
     get discovering(): boolean {
         return this._discovering;
     }

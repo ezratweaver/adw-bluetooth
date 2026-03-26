@@ -17,11 +17,11 @@ const DAEMON_INTERFACE = "com.ezratweaver.AdwBluetoothDaemon";
 const sessionBus = Gio.bus_get_sync(Gio.BusType.SESSION, null);
 
 export class BluetoothManager extends GObject.Object {
-    private _proxy: Gio.DBusProxy;
-    private _devices: Gio.ListStore;
     private _adapters: Gio.ListStore;
     private _activeAdapter: Adapter | null = null;
+    private _devices: Gio.ListStore;
     private _obex: ObexManager;
+    private _proxy: Gio.DBusProxy;
 
     static {
         GObject.registerClass(
@@ -80,16 +80,27 @@ export class BluetoothManager extends GObject.Object {
         this._loadInitialState();
     }
 
-    private _subscribeToSignals(): void {
-        sessionBus.signal_subscribe(
-            DAEMON_SERVICE,
-            DAEMON_INTERFACE,
-            null,
-            DAEMON_OBJECT_PATH,
-            null,
-            Gio.DBusSignalFlags.NONE,
-            this._handleSignal.bind(this),
-        );
+    private _callMethod(
+        method: string,
+        args: GLib.Variant | null,
+    ): Promise<GLib.Variant | null> {
+        return new Promise((resolve, reject) => {
+            this._proxy.call(
+                method,
+                args,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null,
+                (proxy, result) => {
+                    try {
+                        const response = proxy?.call_finish(result);
+                        resolve(response ?? null);
+                    } catch (error) {
+                        reject(error);
+                    }
+                },
+            );
+        });
     }
 
     private _handleSignal(
@@ -241,32 +252,48 @@ export class BluetoothManager extends GObject.Object {
         }
     }
 
-    // ListStore accessors
-    get devices(): Gio.ListStore {
-        return this._devices;
+    private _subscribeToSignals(): void {
+        sessionBus.signal_subscribe(
+            DAEMON_SERVICE,
+            DAEMON_INTERFACE,
+            null,
+            DAEMON_OBJECT_PATH,
+            null,
+            Gio.DBusSignalFlags.NONE,
+            this._handleSignal.bind(this),
+        );
     }
 
-    get adapters(): Gio.ListStore {
-        return this._adapters;
+    confirmAuthorization(accepted: boolean): void {
+        this._callMethod(
+            "ConfirmAuthorization",
+            new GLib.Variant("(b)", [accepted]),
+        );
     }
 
-    get activeAdapter(): Adapter | null {
-        return this._activeAdapter;
+    confirmRequest(accepted: boolean): void {
+        this._callMethod("ConfirmRequest", new GLib.Variant("(b)", [accepted]));
     }
 
-    get obex(): ObexManager {
-        return this._obex;
+    async connectDevice(path: string): Promise<void> {
+        await this._callMethod(
+            "ConnectDevice",
+            new GLib.Variant("(o)", [path]),
+        );
     }
 
-    // Lookup helpers
-    findDeviceByPath(path: string): [Device | null, number] {
-        for (let i = 0; i < this._devices.get_n_items(); i++) {
-            const device = this._devices.get_item(i) as Device;
-            if (device.path === path) {
-                return [device, i];
-            }
+    destroy(): void {
+        this._obex.destroy();
+        if (this._activeAdapter?.discovering) {
+            this.stopDiscovery().catch(() => {});
         }
-        return [null, -1];
+    }
+
+    async disconnectDevice(path: string): Promise<void> {
+        await this._callMethod(
+            "DisconnectDevice",
+            new GLib.Variant("(o)", [path]),
+        );
     }
 
     findAdapterByPath(path: string): [Adapter | null, number] {
@@ -279,19 +306,14 @@ export class BluetoothManager extends GObject.Object {
         return [null, -1];
     }
 
-    // Methods that call daemon
-    async connectDevice(path: string): Promise<void> {
-        await this._callMethod(
-            "ConnectDevice",
-            new GLib.Variant("(o)", [path]),
-        );
-    }
-
-    async disconnectDevice(path: string): Promise<void> {
-        await this._callMethod(
-            "DisconnectDevice",
-            new GLib.Variant("(o)", [path]),
-        );
+    findDeviceByPath(path: string): [Device | null, number] {
+        for (let i = 0; i < this._devices.get_n_items(); i++) {
+            const device = this._devices.get_item(i) as Device;
+            if (device.path === path) {
+                return [device, i];
+            }
+        }
+        return [null, -1];
     }
 
     async pairDevice(path: string): Promise<void> {
@@ -300,6 +322,26 @@ export class BluetoothManager extends GObject.Object {
 
     async removeDevice(path: string): Promise<void> {
         await this._callMethod("RemoveDevice", new GLib.Variant("(o)", [path]));
+    }
+
+    async setActiveAdapter(path: string): Promise<void> {
+        const result = await this._callMethod(
+            "SetActiveAdapter",
+            new GLib.Variant("(o)", [path]),
+        );
+        if (result) {
+            const data = parseAdapterData(result.get_child_value(0));
+            const [adapter] = this.findAdapterByPath(data.path);
+            this._activeAdapter = adapter ?? new Adapter(data);
+            this.notify("active-adapter");
+        }
+    }
+
+    async setAdapterPower(powered: boolean): Promise<void> {
+        await this._callMethod(
+            "SetAdapterPower",
+            new GLib.Variant("(b)", [powered]),
+        );
     }
 
     async setTrusted(path: string, trusted: boolean): Promise<void> {
@@ -317,65 +359,20 @@ export class BluetoothManager extends GObject.Object {
         await this._callMethod("StopDiscovery", null);
     }
 
-    async setAdapterPower(powered: boolean): Promise<void> {
-        await this._callMethod(
-            "SetAdapterPower",
-            new GLib.Variant("(b)", [powered]),
-        );
+    get activeAdapter(): Adapter | null {
+        return this._activeAdapter;
     }
 
-    async setActiveAdapter(path: string): Promise<void> {
-        const result = await this._callMethod(
-            "SetActiveAdapter",
-            new GLib.Variant("(o)", [path]),
-        );
-        if (result) {
-            const data = parseAdapterData(result.get_child_value(0));
-            const [adapter] = this.findAdapterByPath(data.path);
-            this._activeAdapter = adapter ?? new Adapter(data);
-            this.notify("active-adapter");
-        }
+    get adapters(): Gio.ListStore {
+        return this._adapters;
     }
 
-    confirmRequest(accepted: boolean): void {
-        this._callMethod("ConfirmRequest", new GLib.Variant("(b)", [accepted]));
+    get devices(): Gio.ListStore {
+        return this._devices;
     }
 
-    confirmAuthorization(accepted: boolean): void {
-        this._callMethod(
-            "ConfirmAuthorization",
-            new GLib.Variant("(b)", [accepted]),
-        );
-    }
-
-    private _callMethod(
-        method: string,
-        args: GLib.Variant | null,
-    ): Promise<GLib.Variant | null> {
-        return new Promise((resolve, reject) => {
-            this._proxy.call(
-                method,
-                args,
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null,
-                (proxy, result) => {
-                    try {
-                        const response = proxy?.call_finish(result);
-                        resolve(response ?? null);
-                    } catch (error) {
-                        reject(error);
-                    }
-                },
-            );
-        });
-    }
-
-    destroy(): void {
-        this._obex.destroy();
-        if (this._activeAdapter?.discovering) {
-            this.stopDiscovery().catch(() => {});
-        }
+    get obex(): ObexManager {
+        return this._obex;
     }
 }
 

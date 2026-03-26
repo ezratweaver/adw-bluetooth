@@ -30,19 +30,7 @@ export function parseDeviceData(variant: GLib.Variant): DeviceData {
         icon,
         uuids,
         rawBattery,
-    ] = variant.deep_unpack() as [
-        string,
-        string,
-        string,
-        string,
-        boolean,
-        boolean,
-        boolean,
-        number,
-        string,
-        string[],
-        number,
-    ];
+    ] = variant.deep_unpack() as any;
     return {
         path,
         mac,
@@ -215,6 +203,50 @@ export class Device extends GObject.Object {
         this._uuids = new Set(data.uuids);
     }
 
+    get path(): string {
+        return this._path;
+    }
+
+    get mac(): string {
+        return this._mac;
+    }
+
+    get name(): string {
+        return this._name;
+    }
+
+    get alias(): string {
+        return this._alias;
+    }
+
+    get connected(): boolean {
+        return this._connected;
+    }
+
+    get paired(): boolean {
+        return this._paired;
+    }
+
+    get trusted(): boolean {
+        return this._trusted;
+    }
+
+    get deviceClass(): number {
+        return this._deviceClass;
+    }
+
+    get icon(): string {
+        return this._icon;
+    }
+
+    get uuids(): Set<string> {
+        return this._uuids;
+    }
+
+    get batteryPercentage(): number | null {
+        return this._batteryPercentage;
+    }
+
     get connectedStatus(): string {
         if (this._connected) {
             return "Connected";
@@ -238,39 +270,5 @@ export class Device extends GObject.Object {
             this._connecting = value;
             this.notify("connecting");
         }
-    }
-
-    get path(): string {
-        return this._path;
-    }
-    get mac(): string {
-        return this._mac;
-    }
-    get name(): string {
-        return this._name;
-    }
-    get alias(): string {
-        return this._alias;
-    }
-    get connected(): boolean {
-        return this._connected;
-    }
-    get paired(): boolean {
-        return this._paired;
-    }
-    get trusted(): boolean {
-        return this._trusted;
-    }
-    get deviceClass(): number {
-        return this._deviceClass;
-    }
-    get icon(): string {
-        return this._icon;
-    }
-    get uuids(): Set<string> {
-        return this._uuids;
-    }
-    get batteryPercentage(): number | null {
-        return this._batteryPercentage;
     }
 }
