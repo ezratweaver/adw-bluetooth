@@ -237,31 +237,21 @@ export class Window extends Adw.ApplicationWindow {
     }
 
     private _setupAdapterSubMenu() {
-        const adapters: { path: string; alias: string; name: string }[] = [];
+        const adapters = ([...bluetooth.adapters] as Adapter[]).sort((a, b) =>
+            a.name.localeCompare(b.name),
+        );
 
-        for (let i = 0; i < bluetooth.adapters.get_n_items(); i++) {
-            const adapter = bluetooth.adapters.get_item(i) as Adapter;
-            const name = adapter.path.split("/").slice(-1)[0];
-            adapters.push({ path: adapter.path, alias: adapter.alias, name });
-        }
-
-        adapters.sort((a, b) => a.name.localeCompare(b.name));
-
-        for (const {
-            path: adapterPath,
-            alias: adapterAlias,
-            name: adapterName,
-        } of adapters) {
+        for (const adapter of adapters) {
             const displayName =
-                adapterAlias !== adapterName
-                    ? `${adapterAlias} (${adapterName})`
-                    : adapterAlias;
+                adapter.alias !== adapter.name
+                    ? `${adapter.alias} (${adapter.name})`
+                    : adapter.alias;
 
             const isCurrentAdapter =
-                adapterPath === bluetooth.activeAdapter?.path;
+                adapter.path === bluetooth.activeAdapter?.path;
 
             const adapterAction = new Gio.SimpleAction({
-                name: `adapter-${adapterName}`,
+                name: `adapter-${adapter.name}`,
                 state: new GLib.Variant("b", isCurrentAdapter),
             });
 
@@ -275,14 +265,14 @@ export class Window extends Adw.ApplicationWindow {
                             `adapter-${other.name}`,
                         ) as Gio.SimpleAction;
 
-                        if (otherAction && other.path !== adapterPath) {
+                        if (otherAction && other.path !== adapter.path) {
                             otherAction.set_state(new GLib.Variant("b", false));
                         }
                     }
 
                     action.set_state(new GLib.Variant("b", true));
 
-                    bluetooth.setActiveAdapter(adapterPath);
+                    bluetooth.setActiveAdapter(adapter.path);
                     this._setupAdapterBindings();
                 }
             });
@@ -293,7 +283,7 @@ export class Window extends Adw.ApplicationWindow {
 
             menuItem.set_label(displayName);
             menuItem.set_action_and_target_value(
-                `win.adapter-${adapterName}`,
+                `win.adapter-${adapter.name}`,
                 null,
             );
 

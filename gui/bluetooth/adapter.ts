@@ -89,6 +89,10 @@ export class Adapter extends GObject.Object {
         return this._alias;
     }
 
+    get name(): string {
+        return this._path.split("/").pop() ?? "";
+    }
+
     get powered(): boolean {
         return this._powered;
     }
