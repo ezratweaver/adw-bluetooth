@@ -223,7 +223,7 @@ export class BluetoothManager extends GObject.Object {
             if (activeResult) {
                 const data = parseAdapterData(activeResult.get_child_value(0));
                 const [adapter] = this.findAdapterByPath(data.path);
-                this._activeAdapter = adapter ?? new Adapter(data);
+                this._activeAdapter = adapter;
             }
         } catch (error) {
             log(`Failed to load active adapter: ${error}`);
@@ -332,8 +332,11 @@ export class BluetoothManager extends GObject.Object {
         if (result) {
             const data = parseAdapterData(result.get_child_value(0));
             const [adapter] = this.findAdapterByPath(data.path);
-            this._activeAdapter = adapter ?? new Adapter(data);
-            this.notify("active-adapter");
+            if (adapter) {
+                adapter.updateFromDaemon(data);
+                this._activeAdapter = adapter;
+                this.notify("active-adapter");
+            }
         }
     }
 
