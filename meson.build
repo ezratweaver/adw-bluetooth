@@ -24,7 +24,7 @@ if get_option('build_daemon')
       check: true,
     ).stdout().strip().split('\n'),
     output: 'adw-bluetooth-daemon',
-    command: [go, 'build', '-C', meson.project_source_root() / 'daemon', '-o', '@OUTPUT@', '.'],
+    command: [go, 'build', '-C', meson.project_source_root() / 'daemon', '-o', meson.project_build_root() / 'adw-bluetooth-daemon', '.'],
     install: true,
     install_dir: get_option('libexecdir'),
     build_by_default: true,

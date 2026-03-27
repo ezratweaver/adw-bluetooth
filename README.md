@@ -82,8 +82,15 @@ nix build
 ```bash
 meson setup builddir
 meson compile -C builddir
+```
 
-# For running locally
+For local development, start the daemon in one terminal before running the GUI:
+
+```bash
+# Terminal 1: Start the daemon
+./builddir/adw-bluetooth-daemon
+
+# Terminal 2: Run the GUI
 meson compile -C builddir devel
 ```
 
