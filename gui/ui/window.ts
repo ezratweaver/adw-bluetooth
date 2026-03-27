@@ -147,96 +147,66 @@ export class Window extends Adw.ApplicationWindow {
     constructor(params?: Partial<Adw.ApplicationWindow.ConstructorProps>) {
         super(params);
 
-        this._setupMenuActions();
-        this._setupVimNavigation();
-        this._setupAdapterBindings();
-        this._setupButtonEvents();
+        this._setupActions();
+        this._initializeAdapter();
 
         this._incomingTransferManager = new IncomingTransferManager(
             this._showToast.bind(this),
         );
     }
 
-    private _setupAdapterBindings(): void {
-        if (!bluetooth.activeAdapter) {
-            this._showNoAdapterState();
-            return;
-        }
-
-        if (
-            bluetooth.activeAdapter.powered &&
-            !bluetooth.activeAdapter.discovering
-        ) {
-            bluetooth.startDiscovery().catch((error) => {
-                log(`Failed to start discovery: ${error}`);
-                this._showToast("Failed to start device discovery");
-            });
-        }
-
-        this._disabled_state.set_visible(!bluetooth.activeAdapter.powered);
-        this._enabled_state.set_visible(bluetooth.activeAdapter.powered);
-
-        this._setupPropertyBindings();
-        this._setupAgentHandlers();
-        this._setupDeviceList();
-    }
-
-    private _showNoAdapterState(): void {
-        this._disabled_header_label.set_label("No Bluetooth Adapter");
-        this._disabled_description_label.set_label(
-            "Ensure BlueZ is configured correctly and try again.",
-        );
-        this._disabled_state.set_visible(true);
-        this._enabled_state.set_visible(false);
-        this._bluetooth_toggle.set_visible(false);
-    }
-
-    private _setupMenuActions(): void {
+    private _setupActions(): void {
+        // Toggle discovery
         const toggleDiscoveryAction = new Gio.SimpleAction({
             name: "toggle-discovery",
         });
 
         toggleDiscoveryAction.connect("activate", () => {
             if (!bluetooth.activeAdapter) return;
-
             const isDiscovering = bluetooth.activeAdapter.discovering;
-            const action = isDiscovering
+            (isDiscovering
                 ? bluetooth.stopDiscovery()
-                : bluetooth.startDiscovery();
-
-            action.catch(() => {
-                if (isDiscovering) {
-                    this._showToast("Failed to stop device discovery");
-                } else {
-                    this._showToast("Failed to start device discovery");
-                }
+                : bluetooth.startDiscovery()
+            ).catch(() => {
+                this._showToast(
+                    `Failed to ${isDiscovering ? "stop" : "start"} device discovery`,
+                );
             });
         });
+        this.add_action(toggleDiscoveryAction);
 
-        const aboutAction = new Gio.SimpleAction({
-            name: "about",
-        });
+        // About
+        const aboutAction = new Gio.SimpleAction({ name: "about" });
+        aboutAction.connect("activate", () => this._showAbout());
+        this.add_action(aboutAction);
 
-        aboutAction.connect("activate", () => {
-            this._showAbout();
-        });
-
+        // Help overlay
         const showHelpAction = new Gio.SimpleAction({
             name: "show-help-overlay",
         });
-
-        showHelpAction.connect("activate", () => {
-            new ShortcutsWindow(this);
-        });
-
-        this.add_action(toggleDiscoveryAction);
-        this.add_action(aboutAction);
+        showHelpAction.connect("activate", () => new ShortcutsWindow(this));
         this.add_action(showHelpAction);
 
-        this._setupAdapterSubMenu();
-    }
+        // Vim navigation
+        this._vimNavigator = new VimNavigator(this._devices_list, {
+            onDevicePair: this._handleDeviceAction.bind(this),
+        });
 
-    private _setupAdapterSubMenu() {
+        const vimActions: [string, () => void][] = [
+            ["vim-down", () => this._vimNavigator.navigateDown()],
+            ["vim-up", () => this._vimNavigator.navigateUp()],
+            ["vim-select", () => this._vimNavigator.selectCurrent()],
+            ["vim-first", () => this._vimNavigator.navigateFirst()],
+            ["vim-last", () => this._vimNavigator.navigateLast()],
+        ];
+
+        for (const [name, handler] of vimActions) {
+            const action = new Gio.SimpleAction({ name });
+            action.connect("activate", handler);
+            this.add_action(action);
+        }
+
+        // Adapter submenu
         const adapters = ([...bluetooth.adapters] as Adapter[]).sort((a, b) =>
             a.name.localeCompare(b.name),
         );
@@ -247,74 +217,104 @@ export class Window extends Adw.ApplicationWindow {
                     ? `${adapter.alias} (${adapter.name})`
                     : adapter.alias;
 
-            const isCurrentAdapter =
-                adapter.path === bluetooth.activeAdapter?.path;
-
             const adapterAction = new Gio.SimpleAction({
                 name: `adapter-${adapter.name}`,
-                state: new GLib.Variant("b", isCurrentAdapter),
+                state: new GLib.Variant(
+                    "b",
+                    adapter.path === bluetooth.activeAdapter?.path,
+                ),
             });
 
             adapterAction.connect("activate", (action) => {
-                const settingAdapterOn = !action.get_state()?.get_boolean();
+                if (action.get_state()?.get_boolean()) return;
 
-                if (settingAdapterOn) {
-                    // Uncheck all other adapters
-                    for (const other of adapters) {
-                        const otherAction = this.lookup_action(
-                            `adapter-${other.name}`,
-                        ) as Gio.SimpleAction;
-
-                        if (otherAction && other.path !== adapter.path) {
-                            otherAction.set_state(new GLib.Variant("b", false));
-                        }
-                    }
-
-                    action.set_state(new GLib.Variant("b", true));
-
-                    bluetooth.setActiveAdapter(adapter.path);
-                    this._setupAdapterBindings();
+                for (const other of adapters) {
+                    const otherAction = this.lookup_action(
+                        `adapter-${other.name}`,
+                    ) as Gio.SimpleAction;
+                    otherAction?.set_state(
+                        new GLib.Variant("b", other.path === adapter.path),
+                    );
                 }
+
+                bluetooth.setActiveAdapter(adapter.path);
+                this._initializeAdapter();
             });
 
             this.add_action(adapterAction);
 
             const menuItem = new Gio.MenuItem();
-
             menuItem.set_label(displayName);
             menuItem.set_action_and_target_value(
                 `win.adapter-${adapter.name}`,
                 null,
             );
-
             this._adapter_list.append_item(menuItem);
         }
     }
 
-    private _setupPropertyBindings(): void {
-        if (!bluetooth.activeAdapter) return;
+    private _initializeAdapter(): void {
+        if (!bluetooth.activeAdapter) {
+            this._disabled_header_label.set_label("No Bluetooth Adapter");
+            this._disabled_description_label.set_label(
+                "Ensure BlueZ is configured correctly and try again.",
+            );
+            this._disabled_state.set_visible(true);
+            this._enabled_state.set_visible(false);
+            this._bluetooth_toggle.set_visible(false);
+            return;
+        }
 
-        bluetooth.activeAdapter.bind_property(
+        const adapter = bluetooth.activeAdapter;
+
+        // Start discovery if powered but not discovering
+        if (adapter.powered && !adapter.discovering) {
+            bluetooth.startDiscovery().catch((error) => {
+                log(`Failed to start discovery: ${error}`);
+                this._showToast("Failed to start device discovery");
+            });
+        }
+
+        // Update visibility
+        this._disabled_state.set_visible(!adapter.powered);
+        this._enabled_state.set_visible(adapter.powered);
+
+        // Property bindings
+        adapter.bind_property(
             "powered",
             this._bluetooth_toggle,
             "active",
             GObject.BindingFlags.SYNC_CREATE,
         );
-
-        bluetooth.activeAdapter.bind_property(
+        adapter.bind_property(
             "discovering",
             this._discovering_spinner,
             "visible",
             GObject.BindingFlags.SYNC_CREATE,
         );
-    }
 
-    private _setupButtonEvents(): void {
-        if (!bluetooth.activeAdapter) return;
+        // Agent handlers
+        bluetooth.connect(
+            "request-confirmation",
+            (_, devicePath: string, passkey: number) =>
+                this._showConfirmationDialog(devicePath, passkey),
+        );
+        bluetooth.connect("request-authorization", (_, devicePath: string) =>
+            this._showAuthorizationDialog(devicePath),
+        );
+        bluetooth.connect(
+            "display-pin-code",
+            (_, devicePath: string, pincode: string) =>
+                this._showPinDisplayDialog(devicePath, pincode),
+        );
+        bluetooth.connect(
+            "display-passkey",
+            (_, devicePath: string, passkey: number) =>
+                this._showPasskeyDisplayDialog(devicePath, passkey),
+        );
 
+        // Bluetooth toggle handler
         let bluetoothToggleHandlerId: number;
-
-        // On enabling / disabling bluetooth
         bluetoothToggleHandlerId = this._bluetooth_toggle.connect(
             "state-set",
             (_, isPoweringOn) => {
@@ -336,14 +336,12 @@ export class Window extends Adw.ApplicationWindow {
                     return true;
                 }
 
-                // Update UI state immediately
                 this._disabled_state.set_visible(!isPoweringOn);
                 this._enabled_state.set_visible(isPoweringOn);
 
                 bluetooth
                     .setAdapterPower(isPoweringOn)
                     .then(() => {
-                        // If we're powering on, then start discovery
                         if (
                             isPoweringOn &&
                             !bluetooth.activeAdapter?.discovering
@@ -357,16 +355,12 @@ export class Window extends Adw.ApplicationWindow {
                                 );
                             });
                         }
-
                         setSwitchState(isPoweringOn);
                     })
                     .catch((error) => {
                         log(`Error occurred setting adapter power: ${error}`);
                         this._showToast("Failed to control Bluetooth power");
-
                         setSwitchState(!isPoweringOn);
-
-                        // Revert UI state on error
                         this._disabled_state.set_visible(isPoweringOn);
                         this._enabled_state.set_visible(!isPoweringOn);
                     });
@@ -374,37 +368,12 @@ export class Window extends Adw.ApplicationWindow {
                 return true;
             },
         );
-    }
 
-    private _setupAgentHandlers(): void {
-        if (!bluetooth.activeAdapter) return;
-
-        bluetooth.connect(
-            "request-confirmation",
-            (_, devicePath: string, passkey: number) =>
-                this._showConfirmationDialog(devicePath, passkey),
-        );
-
-        bluetooth.connect("request-authorization", (_, devicePath: string) =>
-            this._showAuthorizationDialog(devicePath),
-        );
-
-        bluetooth.connect(
-            "display-pin-code",
-            (_, devicePath: string, pincode: string) =>
-                this._showPinDisplayDialog(devicePath, pincode),
-        );
-
-        bluetooth.connect(
-            "display-passkey",
-            (_, devicePath: string, passkey: number) =>
-                this._showPasskeyDisplayDialog(devicePath, passkey),
-        );
+        // Device list
+        this._setupDeviceList();
     }
 
     private _setupDeviceList(): void {
-        if (!bluetooth.activeAdapter) return;
-
         const placeholderBox = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
             halign: Gtk.Align.CENTER,
@@ -436,13 +405,7 @@ export class Window extends Adw.ApplicationWindow {
 
         this._devices_list.set_placeholder(placeholderBox);
 
-        /*
-         * Sorts devices by priority as:
-         *
-         * 1. Connected devices first
-         * 2. Known but not connected devices second
-         * 3. Unknown/non paired devices last
-         */
+        // Sort: connected > paired > unpaired
         this._deviceSorter = new Gtk.CustomSorter();
         this._deviceSorter.set_sort_func((a, b) => {
             const device1 = a as Device;
@@ -450,7 +413,6 @@ export class Window extends Adw.ApplicationWindow {
 
             if (device1.connected && !device2.connected) return -1;
             if (!device1.connected && device2.connected) return 1;
-
             if (device1.paired && !device2.paired) return -1;
             if (!device1.paired && device2.paired) return 1;
 
@@ -476,7 +438,6 @@ export class Window extends Adw.ApplicationWindow {
                 }
             });
 
-            // Trigger re-sort when connection status changes
             device.connect("notify::connected", () => {
                 this._deviceSorter?.changed(Gtk.SorterChange.DIFFERENT);
             });
@@ -503,21 +464,18 @@ export class Window extends Adw.ApplicationWindow {
         row.add_suffix(statusLabel);
         row.add_suffix(spinner);
 
-        // Bind device properties to UI
         device.bind_property(
             "alias",
             row,
             "title",
             GObject.BindingFlags.SYNC_CREATE,
         );
-
         device.bind_property(
             "connecting",
             spinner,
             "visible",
             GObject.BindingFlags.SYNC_CREATE,
         );
-
         device.bind_property(
             "connecting",
             statusLabel,
@@ -526,7 +484,6 @@ export class Window extends Adw.ApplicationWindow {
                 GObject.BindingFlags.INVERT_BOOLEAN,
         );
 
-        // Update status label when connected/paired changes
         const updateStatus = () =>
             statusLabel.set_label(device.connectedStatus);
         device.connect("notify::connected", updateStatus);
@@ -535,7 +492,6 @@ export class Window extends Adw.ApplicationWindow {
         return row;
     }
 
-    // Dialog methods
     private _showAbout() {
         const aboutDialog = new Adw.AboutDialog({
             application_name: "Adwaita Bluetooth",
@@ -714,42 +670,6 @@ export class Window extends Adw.ApplicationWindow {
             });
             this._toast_overlay.add_toast(toast);
         }
-    }
-
-    private _setupVimNavigation(): void {
-        // Initialize vim navigator
-        this._vimNavigator = new VimNavigator(this._devices_list, {
-            onDevicePair: this._handleDeviceAction.bind(this),
-        });
-
-        // Vim-style navigation actions
-        const vimDownAction = new Gio.SimpleAction({ name: "vim-down" });
-        vimDownAction.connect("activate", () =>
-            this._vimNavigator.navigateDown(),
-        );
-        this.add_action(vimDownAction);
-
-        const vimUpAction = new Gio.SimpleAction({ name: "vim-up" });
-        vimUpAction.connect("activate", () => this._vimNavigator.navigateUp());
-        this.add_action(vimUpAction);
-
-        const vimSelectAction = new Gio.SimpleAction({ name: "vim-select" });
-        vimSelectAction.connect("activate", () =>
-            this._vimNavigator.selectCurrent(),
-        );
-        this.add_action(vimSelectAction);
-
-        const vimFirstAction = new Gio.SimpleAction({ name: "vim-first" });
-        vimFirstAction.connect("activate", () =>
-            this._vimNavigator.navigateFirst(),
-        );
-        this.add_action(vimFirstAction);
-
-        const vimLastAction = new Gio.SimpleAction({ name: "vim-last" });
-        vimLastAction.connect("activate", () =>
-            this._vimNavigator.navigateLast(),
-        );
-        this.add_action(vimLastAction);
     }
 
     vfunc_close_request(): boolean {
