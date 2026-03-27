@@ -148,10 +148,90 @@ export class Window extends Adw.ApplicationWindow {
         super(params);
 
         this._setupActions();
+        this._setupSignalHandlers();
+        this._setupDeviceList();
         this._initializeAdapter();
 
         this._incomingTransferManager = new IncomingTransferManager(
             this._showToast.bind(this),
+        );
+    }
+
+    private _setupSignalHandlers(): void {
+        // Agent handlers
+        bluetooth.connect(
+            "request-confirmation",
+            (_, devicePath: string, passkey: number) =>
+                this._showConfirmationDialog(devicePath, passkey),
+        );
+        bluetooth.connect("request-authorization", (_, devicePath: string) =>
+            this._showAuthorizationDialog(devicePath),
+        );
+        bluetooth.connect(
+            "display-pin-code",
+            (_, devicePath: string, pincode: string) =>
+                this._showPinDisplayDialog(devicePath, pincode),
+        );
+        bluetooth.connect(
+            "display-passkey",
+            (_, devicePath: string, passkey: number) =>
+                this._showPasskeyDisplayDialog(devicePath, passkey),
+        );
+
+        // Bluetooth toggle handler
+        let toggleHandlerId: number;
+        toggleHandlerId = this._bluetooth_toggle.connect(
+            "state-set",
+            (_, isPoweringOn) => {
+                const setSwitchState = (state: boolean) => {
+                    GObject.signal_handler_block(
+                        this._bluetooth_toggle,
+                        toggleHandlerId,
+                    );
+                    this._bluetooth_toggle.set_active(state);
+                    this._bluetooth_toggle.set_state(state);
+                    GObject.signal_handler_unblock(
+                        this._bluetooth_toggle,
+                        toggleHandlerId,
+                    );
+                };
+
+                if (!bluetooth.activeAdapter) {
+                    setSwitchState(!isPoweringOn);
+                    return true;
+                }
+
+                this._disabled_state.set_visible(!isPoweringOn);
+                this._enabled_state.set_visible(isPoweringOn);
+
+                bluetooth
+                    .setAdapterPower(isPoweringOn)
+                    .then(() => {
+                        if (
+                            isPoweringOn &&
+                            !bluetooth.activeAdapter?.discovering
+                        ) {
+                            bluetooth.startDiscovery().catch((error) => {
+                                log(
+                                    `Failed to start discovery on power on: ${error}`,
+                                );
+                                this._showToast(
+                                    "Failed to start device discovery",
+                                );
+                            });
+                        }
+                        setSwitchState(isPoweringOn);
+                    })
+                    .catch((error) => {
+                        log(`Error occurred setting adapter power: ${error}`);
+                        this._showToast("Failed to control Bluetooth power");
+                        setSwitchState(!isPoweringOn);
+                        this._disabled_state.set_visible(isPoweringOn);
+                        this._enabled_state.set_visible(!isPoweringOn);
+                    });
+
+                return true;
+            },
         );
     }
 
@@ -292,85 +372,6 @@ export class Window extends Adw.ApplicationWindow {
             "visible",
             GObject.BindingFlags.SYNC_CREATE,
         );
-
-        // Agent handlers
-        bluetooth.connect(
-            "request-confirmation",
-            (_, devicePath: string, passkey: number) =>
-                this._showConfirmationDialog(devicePath, passkey),
-        );
-        bluetooth.connect("request-authorization", (_, devicePath: string) =>
-            this._showAuthorizationDialog(devicePath),
-        );
-        bluetooth.connect(
-            "display-pin-code",
-            (_, devicePath: string, pincode: string) =>
-                this._showPinDisplayDialog(devicePath, pincode),
-        );
-        bluetooth.connect(
-            "display-passkey",
-            (_, devicePath: string, passkey: number) =>
-                this._showPasskeyDisplayDialog(devicePath, passkey),
-        );
-
-        // Bluetooth toggle handler
-        let bluetoothToggleHandlerId: number;
-        bluetoothToggleHandlerId = this._bluetooth_toggle.connect(
-            "state-set",
-            (_, isPoweringOn) => {
-                const setSwitchState = (state: boolean) => {
-                    GObject.signal_handler_block(
-                        this._bluetooth_toggle,
-                        bluetoothToggleHandlerId,
-                    );
-                    this._bluetooth_toggle.set_active(state);
-                    this._bluetooth_toggle.set_state(state);
-                    GObject.signal_handler_unblock(
-                        this._bluetooth_toggle,
-                        bluetoothToggleHandlerId,
-                    );
-                };
-
-                if (!bluetooth.activeAdapter) {
-                    setSwitchState(!isPoweringOn);
-                    return true;
-                }
-
-                this._disabled_state.set_visible(!isPoweringOn);
-                this._enabled_state.set_visible(isPoweringOn);
-
-                bluetooth
-                    .setAdapterPower(isPoweringOn)
-                    .then(() => {
-                        if (
-                            isPoweringOn &&
-                            !bluetooth.activeAdapter?.discovering
-                        ) {
-                            bluetooth.startDiscovery().catch((error) => {
-                                log(
-                                    `Failed to start discovery on power on: ${error}`,
-                                );
-                                this._showToast(
-                                    "Failed to start device discovery",
-                                );
-                            });
-                        }
-                        setSwitchState(isPoweringOn);
-                    })
-                    .catch((error) => {
-                        log(`Error occurred setting adapter power: ${error}`);
-                        this._showToast("Failed to control Bluetooth power");
-                        setSwitchState(!isPoweringOn);
-                        this._disabled_state.set_visible(isPoweringOn);
-                        this._enabled_state.set_visible(!isPoweringOn);
-                    });
-
-                return true;
-            },
-        );
-
-        // Device list
-        this._setupDeviceList();
     }
 
     private _setupDeviceList(): void {
