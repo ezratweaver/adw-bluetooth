@@ -148,9 +148,9 @@ export class Window extends Adw.ApplicationWindow {
         super(params);
 
         this._setupActions();
-        this._setupSignalHandlers();
         this._setupDeviceList();
         this._initializeAdapter();
+        this._setupSignalHandlers();
 
         this._incomingTransferManager = new IncomingTransferManager(
             this._showToast.bind(this),
