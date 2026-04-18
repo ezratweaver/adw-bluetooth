@@ -4,7 +4,7 @@ pkgver=1.0.0
 pkgrel=1
 pkgdesc='GNOME Inspired LibAdwaita Bluetooth Applet'
 url="https://github.com/ezratweaver/adw-bluetooth/"
-arch=(any)
+arch=('x86_64')
 license=(GPL-3.0)
 depends=(
   dconf
