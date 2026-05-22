@@ -1,8 +1,10 @@
 [Desktop Entry]
 Name=Adwaita Bluetooth
+GenericName=Bluetooth Manager
+Comment=Manage Bluetooth devices and connections
 Exec=adw-bluetooth
 Icon=com.ezratweaver.AdwBluetooth
 Terminal=false
 Type=Application
-Categories=GTK;
+Categories=GTK;Network;Bluetooth;
 StartupNotify=true

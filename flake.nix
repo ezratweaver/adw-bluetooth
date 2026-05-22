@@ -17,7 +17,7 @@
       };
     in
     {
-      # ---- Buildable package ----
+      # ---- Derivation ----
       packages.${system}.default = pkgs.stdenv.mkDerivation {
         pname = "adw-bluetooth";
         version = "1.1.0";
@@ -38,7 +38,7 @@
           pkgs.libadwaita
         ];
 
-        # Skip the meson daemon custom_target — we use buildGoModule instead
+        # Skip building the daemon through meson; we use buildGoModule instead
         mesonFlags = [ "-Dbuild_daemon=false" ];
 
         postInstall = ''
@@ -55,13 +55,14 @@
           ...
         }:
         let
-          cfg = config.services.adw-bluetooth;
           pkg = self.packages.${pkgs.system}.default;
         in
         {
-          options.services.adw-bluetooth.enable = lib.mkEnableOption "Adwaita Bluetooth daemon";
+          options.services.adw-bluetooth = {
+            enable = lib.mkEnableOption "Adwaita Bluetooth daemon";
+          };
 
-          config = lib.mkIf cfg.enable {
+          config = lib.mkIf config.services.adw-bluetooth.enable {
             systemd.user.services.adw-bluetooth-daemon = {
               description = "AdwBluetooth Daemon";
               wantedBy = [ "default.target" ];
@@ -73,7 +74,6 @@
               };
             };
 
-            # Install the package and D-Bus service
             environment.systemPackages = [ pkg ];
             services.dbus.packages = [ pkg ];
           };
