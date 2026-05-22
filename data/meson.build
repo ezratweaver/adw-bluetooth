@@ -11,7 +11,7 @@ configure_file(
 
 configure_file(
   input: 'com.ezratweaver.AdwBluetoothDaemon.dbus.service.in',
-  output: 'com.ezratweaver.AdwBluetoothDaemon.service',
+  output: 'com.ezratweaver.AdwBluetoothDaemon.dbus.service',
   configuration: service_conf,
   install: true,
   install_dir: join_paths(get_option('datadir'), 'dbus-1/services')
