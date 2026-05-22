@@ -1,6 +1,6 @@
 # Maintainer: Ezra Weaver <ezratweaver@gmail.com>
 pkgname=adw-bluetooth
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc='GNOME Inspired LibAdwaita Bluetooth Applet'
 url="https://github.com/ezratweaver/adw-bluetooth/"

@@ -11,7 +11,7 @@
 
       daemon = pkgs.buildGoModule {
         pname = "adw-bluetooth-daemon";
-        version = "1.0.0";
+        version = "1.1.0";
         src = ./daemon;
         vendorHash = "sha256-7tiSwNhq6e4LEh4lUkfh2i4tEdWWL6TxQpYYwYKsfog=";
       };
@@ -20,7 +20,7 @@
       # ---- Buildable package ----
       packages.${system}.default = pkgs.stdenv.mkDerivation {
         pname = "adw-bluetooth";
-        version = "1.0.0";
+        version = "1.1.0";
         src = ./.;
 
         nativeBuildInputs = [
