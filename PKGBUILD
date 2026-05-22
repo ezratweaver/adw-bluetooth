@@ -7,6 +7,7 @@ url="https://github.com/ezratweaver/adw-bluetooth/"
 arch=('x86_64')
 license=(GPL-3.0)
 depends=(
+  bluez
   dconf
   gjs
   glib2

@@ -6,6 +6,7 @@ After=bluetooth.target
 Type=dbus
 BusName=com.ezratweaver.AdwBluetoothDaemon
 ExecStart=@libexecdir@/adw-bluetooth-daemon
+Restart=on-failure
 
 [Install]
 WantedBy=default.target

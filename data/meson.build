@@ -6,7 +6,7 @@ configure_file(
   output: 'com.ezratweaver.AdwBluetoothDaemon.service',
   configuration: service_conf,
   install: true,
-  install_dir: join_paths(get_option('sysconfdir'), 'systemd/user')
+  install_dir: join_paths(get_option('prefix'), 'lib/systemd/user')
 )
 
 configure_file(
