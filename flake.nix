@@ -55,14 +55,15 @@
           ...
         }:
         let
-          pkg = self.packages.${pkgs.system}.default;
+          cfg = config.services.adw-bluetooth;
         in
         {
           options.services.adw-bluetooth = {
             enable = lib.mkEnableOption "Adwaita Bluetooth daemon";
+            package = lib.mkPackageOption pkgs "adw-bluetooth" { };
           };
 
-          config = lib.mkIf config.services.adw-bluetooth.enable {
+          config = lib.mkIf cfg.enable {
             systemd.user.services.adw-bluetooth-daemon = {
               description = "AdwBluetooth Daemon";
               wantedBy = [ "default.target" ];
@@ -70,12 +71,12 @@
               serviceConfig = {
                 Type = "dbus";
                 BusName = "com.ezratweaver.AdwBluetoothDaemon";
-                ExecStart = "${pkg}/libexec/adw-bluetooth-daemon";
+                ExecStart = "${cfg.package}/libexec/adw-bluetooth-daemon";
               };
             };
 
-            environment.systemPackages = [ pkg ];
-            services.dbus.packages = [ pkg ];
+            environment.systemPackages = [ cfg.package ];
+            services.dbus.packages = [ cfg.package ];
           };
         };
 
