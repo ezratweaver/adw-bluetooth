@@ -33,7 +33,7 @@ nvim PKGBUILD
 
 ```bash
 podman run -it --rm \
-  -v .:/work:z \
+  -v .:/work \
   docker.io/archlinux/archlinux:base-devel \
   bash -c "
     pacman -Sy --noconfirm
