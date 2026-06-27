@@ -44,9 +44,7 @@ yay -S adw-bluetooth
 ### NixOS (available only on unstable)
 
 ```nix
-environment.systemPackages = with pkgs; [
-  adw-bluetooth
-];
+services.adw-bluetooth.enable = true;
 ```
 
 ## Compiling from source
