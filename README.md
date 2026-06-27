@@ -41,7 +41,7 @@ A fully featured bluetooth device manager built for tiling window managers like 
 yay -S adw-bluetooth
 ```
 
-### NixOS (available on 25.11 and unstable)
+### NixOS (available only on unstable)
 
 ```nix
 environment.systemPackages = with pkgs; [
