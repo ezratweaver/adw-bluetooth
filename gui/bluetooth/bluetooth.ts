@@ -20,7 +20,7 @@ export class BluetoothManager extends GObject.Object {
     private _adapters: Gio.ListStore;
     private _activeAdapter: Adapter | null = null;
     private _devices: Gio.ListStore;
-    private _obex: ObexManager;
+    private _obex: ObexManager | null = null;
     private _proxy: Gio.DBusProxy;
 
     static {
@@ -64,7 +64,12 @@ export class BluetoothManager extends GObject.Object {
 
         this._devices = new Gio.ListStore({ item_type: Device.$gtype });
         this._adapters = new Gio.ListStore({ item_type: Adapter.$gtype });
-        this._obex = new ObexManager();
+
+        try {
+            this._obex = new ObexManager();
+        } catch (error) {
+            log(`Failed to initialize OBEX manager: ${error}`);
+        }
 
         this._proxy = Gio.DBusProxy.new_sync(
             sessionBus,
@@ -283,7 +288,7 @@ export class BluetoothManager extends GObject.Object {
     }
 
     destroy(): void {
-        this._obex.destroy();
+        this._obex?.destroy();
         if (this._activeAdapter?.discovering) {
             this.stopDiscovery().catch(() => {});
         }
@@ -374,7 +379,7 @@ export class BluetoothManager extends GObject.Object {
         return this._devices;
     }
 
-    get obex(): ObexManager {
+    get obex(): ObexManager | null {
         return this._obex;
     }
 }

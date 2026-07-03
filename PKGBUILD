@@ -8,6 +8,7 @@ arch=('x86_64')
 license=(GPL-3.0)
 depends=(
   bluez
+  bluez-obex
   dconf
   gjs
   glib2
