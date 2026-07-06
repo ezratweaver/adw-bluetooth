@@ -8,10 +8,11 @@
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
+      version = pkgs.lib.fileContents ./VERSION;
 
       daemon = pkgs.buildGoModule {
         pname = "adw-bluetooth-daemon";
-        version = "1.1.0";
+        inherit version;
         src = ./daemon;
         vendorHash = "sha256-7tiSwNhq6e4LEh4lUkfh2i4tEdWWL6TxQpYYwYKsfog=";
       };
@@ -20,7 +21,7 @@
       # ---- Derivation ----
       packages.${system}.default = pkgs.stdenv.mkDerivation {
         pname = "adw-bluetooth";
-        version = "1.1.0";
+        inherit version;
         src = ./.;
 
         nativeBuildInputs = [
