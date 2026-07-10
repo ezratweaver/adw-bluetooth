@@ -1,6 +1,6 @@
 # Maintainer: Ezra Weaver <ezratweaver@gmail.com>
 pkgname=adw-bluetooth
-pkgver=1.1.0
+pkgver=0.0.0
 pkgrel=1
 pkgdesc='GNOME Inspired LibAdwaita Bluetooth Applet'
 url="https://github.com/ezratweaver/adw-bluetooth/"
@@ -23,9 +23,9 @@ makedepends=(
   meson
   typescript
 )
-source=(
-  "git+https://github.com/ezratweaver/${pkgname}"
-)
+
+source=("https://github.com/ezratweaver/${pkgname}/archive/refs/tags/${pkgver}.tar.gz")
+
 b2sums=('SKIP')
 
 build() {
