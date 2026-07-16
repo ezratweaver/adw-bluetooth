@@ -11,7 +11,7 @@
       version = pkgs.lib.fileContents ./VERSION;
 
       daemon = pkgs.buildGoModule {
-        pname = "adw-bluetooth-daemon";
+        pname = "adw-bluetooth-daemon-git";
         inherit version;
         src = ./daemon;
         vendorHash = "sha256-7tiSwNhq6e4LEh4lUkfh2i4tEdWWL6TxQpYYwYKsfog=";
@@ -20,7 +20,7 @@
     {
       # ---- Derivation ----
       packages.${system}.default = pkgs.stdenv.mkDerivation {
-        pname = "adw-bluetooth";
+        pname = "adw-bluetooth-git";
         inherit version;
         src = ./.;
 
@@ -56,16 +56,21 @@
           ...
         }:
         let
-          cfg = config.services.adw-bluetooth;
+          cfg = config.services.adw-bluetooth-git;
         in
         {
-          options.services.adw-bluetooth = {
-            enable = lib.mkEnableOption "Adwaita Bluetooth daemon";
-            package = lib.mkPackageOption pkgs "adw-bluetooth" { };
+          options.services.adw-bluetooth-git = {
+            enable = lib.mkEnableOption "Adwaita Bluetooth daemon (git)";
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = self.packages.${pkgs.system}.default;
+              defaultText = lib.literalExpression "adw-bluetooth-git.packages.\${system}.default";
+              description = "The adw-bluetooth-git package to use.";
+            };
           };
 
           config = lib.mkIf cfg.enable {
-            systemd.user.services.adw-bluetooth-daemon = {
+            systemd.user.services.adw-bluetooth-daemon-git = {
               description = "AdwBluetooth Daemon";
               wantedBy = [ "default.target" ];
               after = [ "bluetooth.target" ];
