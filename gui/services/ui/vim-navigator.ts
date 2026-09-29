@@ -18,11 +18,22 @@ export class VimNavigator {
     }
 
     private _setupMotionController(): void {
-        // Disable vim mode if mouse hovers over the list
+        // Disable vim mode when the user moves the mouse over the list
         const motionController = new Gtk.EventControllerMotion();
+        let lastX = 0;
+        let lastY = 0;
+
         motionController.connect("motion", () => {
+            const [, x, y] = motionController
+                .get_current_event()!
+                .get_position();
+            if (x === lastX && y === lastY) return;
+
+            lastX = x;
+            lastY = y;
             this.disableMode();
         });
+
         this.listBox.add_controller(motionController);
     }
 
@@ -50,7 +61,7 @@ export class VimNavigator {
 
         // Scroll the list so the selected row stays visible
         const viewport = this.listBox.get_ancestor(
-            Gtk.Viewport.$gtype,
+            Gtk.Viewport.$gtype
         ) as Gtk.Viewport | null;
         viewport?.scroll_to(row, null);
     }
