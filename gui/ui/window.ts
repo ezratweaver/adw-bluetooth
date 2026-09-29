@@ -429,7 +429,9 @@ export class Window extends Adw.ApplicationWindow {
             const row = this._createDeviceRow(device);
 
             row.connect("activated", () => {
-                if (!device.connecting) {
+                if (device.connecting) {
+                    this._cancelPairing(device);
+                } else {
                     if (device.paired) {
                         this._showDeviceDetails(device);
                     } else {
@@ -608,6 +610,27 @@ export class Window extends Adw.ApplicationWindow {
         await bluetooth.setAdapterPower(powered);
     }
 
+    private async _cancelPairing(device: Device) {
+        // Only a pairing in progress can be cancelled
+        if (device.paired) return;
+
+        // Remove first so the pairing error is not shown as a failure
+        this._activeDevices.delete(device);
+
+        try {
+            await bluetooth.cancelPairing(device.path);
+            this._showToast(`Cancelled pairing with ${device.alias}`);
+        } catch (error) {
+            log(`Failed to cancel pairing with ${device.alias}: ${error}`);
+        }
+
+        if (this._activeDevices.size === 0) {
+            bluetooth.startDiscovery().catch((error) => {
+                log(`Failed to restart discovery after cancel: ${error}`);
+            });
+        }
+    }
+
     private async _handleDeviceAction(device: Device) {
         try {
             // Keep track of how many devices are being paired at once
@@ -646,10 +669,10 @@ export class Window extends Adw.ApplicationWindow {
         } catch (error) {
             device.connecting = false;
 
-            // Device is already removed if power off cancelled the pairing
-            const cancelledByPowerOff = !this._activeDevices.delete(device);
-            if (cancelledByPowerOff) {
-                log(`Pairing with ${device.alias} cancelled by power off`);
+            // Device is already removed if the action was cancelled
+            const cancelled = !this._activeDevices.delete(device);
+            if (cancelled) {
+                log(`Action for ${device.alias} was cancelled`);
                 return;
             }
 
