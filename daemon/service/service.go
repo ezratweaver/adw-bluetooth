@@ -115,6 +115,16 @@ func (daemon *AdwBluetoothDaemon) PairDevice(path dbus.ObjectPath) *dbus.Error {
 	return nil
 }
 
+func (daemon *AdwBluetoothDaemon) CancelPairing(path dbus.ObjectPath) *dbus.Error {
+	logger.L.Info("Cancelling pairing", "path", path)
+	callErr := connection.SysConnection.Object("org.bluez", path).Call("org.bluez.Device1.CancelPairing", 0).Err
+	if callErr != nil {
+		logger.L.Error("Failed to cancel pairing", "path", path, "err", callErr)
+		return dbus.NewError("org.bluez.Error.Failed", []any{callErr.Error()})
+	}
+	return nil
+}
+
 func (daemon *AdwBluetoothDaemon) RemoveDevice(path dbus.ObjectPath) *dbus.Error {
 	logger.L.Info("Removing device", "path", path)
 	callErr := connection.SysConnection.Object("org.bluez", daemon.activeAdapter).Call("org.bluez.Adapter1.RemoveDevice", 0, path).Err

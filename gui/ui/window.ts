@@ -29,7 +29,7 @@ export class Window extends Adw.ApplicationWindow {
 
     private _incomingTransferManager!: IncomingTransferManager;
     private _vimNavigator!: VimNavigator;
-    private _activePairingCount: number = 0;
+    private _activeDevices = new Set<Device>();
 
     static {
         GObject.registerClass(
@@ -204,8 +204,7 @@ export class Window extends Adw.ApplicationWindow {
                 this._disabled_state.set_visible(!isPoweringOn);
                 this._enabled_state.set_visible(isPoweringOn);
 
-                bluetooth
-                    .setAdapterPower(isPoweringOn)
+                this._setAdapterPower(isPoweringOn)
                     .then(() => {
                         if (
                             isPoweringOn &&
@@ -590,15 +589,34 @@ export class Window extends Adw.ApplicationWindow {
         detailsWindow.present();
     }
 
+    private async _setAdapterPower(powered: boolean): Promise<void> {
+        // Cancel any pairing in progress before powering off
+        if (!powered) {
+            for (const device of this._activeDevices) {
+                if (device.paired) continue;
+
+                // Remove first so the pairing error is not shown as a failure
+                this._activeDevices.delete(device);
+                await bluetooth.cancelPairing(device.path).catch((error) => {
+                    log(
+                        `Failed to cancel pairing with ${device.alias}: ${error}`,
+                    );
+                });
+            }
+        }
+
+        await bluetooth.setAdapterPower(powered);
+    }
+
     private async _handleDeviceAction(device: Device) {
         try {
             // Keep track of how many devices are being paired at once
-            this._activePairingCount++;
+            this._activeDevices.add(device);
             device.connecting = true;
 
             if (!device.paired) {
                 // If this is the first device we are pairing, stop discovery.
-                if (this._activePairingCount === 1) {
+                if (this._activeDevices.size === 1) {
                     log(`Stopping discovery for pairing with ${device.alias}`);
                     await bluetooth.stopDiscovery();
                 }
@@ -608,7 +626,7 @@ export class Window extends Adw.ApplicationWindow {
             } else if (device.connected) {
                 await bluetooth.disconnectDevice(device.path);
             } else {
-                if (this._activePairingCount === 1) {
+                if (this._activeDevices.size === 1) {
                     log(`Stopping discovery for connecting to ${device.alias}`);
                     await bluetooth.stopDiscovery();
                 }
@@ -617,9 +635,9 @@ export class Window extends Adw.ApplicationWindow {
             }
 
             device.connecting = false;
-            this._activePairingCount--;
+            this._activeDevices.delete(device);
 
-            if (this._activePairingCount === 0) {
+            if (this._activeDevices.size === 0) {
                 log(`Restarting discovery after successful pairing/connection`);
                 bluetooth.startDiscovery().catch((error) => {
                     log(`Failed to restart discovery after success: ${error}`);
@@ -627,10 +645,16 @@ export class Window extends Adw.ApplicationWindow {
             }
         } catch (error) {
             device.connecting = false;
-            this._activePairingCount--;
+
+            // Device is already removed if power off cancelled the pairing
+            const cancelledByPowerOff = !this._activeDevices.delete(device);
+            if (cancelledByPowerOff) {
+                log(`Pairing with ${device.alias} cancelled by power off`);
+                return;
+            }
 
             if (
-                this._activePairingCount === 0 &&
+                this._activeDevices.size === 0 &&
                 (!device.paired || device.connected)
             ) {
                 log(

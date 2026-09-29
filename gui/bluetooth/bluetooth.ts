@@ -325,6 +325,13 @@ export class BluetoothManager extends GObject.Object {
         await this._callMethod("PairDevice", new GLib.Variant("(o)", [path]));
     }
 
+    async cancelPairing(path: string): Promise<void> {
+        await this._callMethod(
+            "CancelPairing",
+            new GLib.Variant("(o)", [path]),
+        );
+    }
+
     async removeDevice(path: string): Promise<void> {
         await this._callMethod("RemoveDevice", new GLib.Variant("(o)", [path]));
     }
