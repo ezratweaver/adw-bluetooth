@@ -36,7 +36,7 @@ podman run -it --rm \
   -v .:/work \
   docker.io/archlinux/archlinux:base-devel \
   bash -c "
-    pacman -Sy --noconfirm
+    pacman -Syu --noconfirm
     cp -r /work /tmp/repo
     useradd -m build
     echo 'build ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
