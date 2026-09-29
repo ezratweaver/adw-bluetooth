@@ -56,25 +56,33 @@ export class VimNavigator {
     }
 
     public navigateDown(): void {
-        this.enableMode();
-        const selectedRow = this.listBox.get_selected_row();
-        if (!selectedRow) {
-            // If no row is selected, select the first one
-            const firstRow = this.listBox.get_row_at_index(0);
-            if (firstRow) {
-                this._selectRow(firstRow);
-            }
-            return;
-        }
-
-        const currentIndex = selectedRow.get_index();
-        const nextRow = this.listBox.get_row_at_index(currentIndex + 1);
-        if (nextRow) {
-            this._selectRow(nextRow);
-        }
+        this._navigateBy(1);
     }
 
     public navigateUp(): void {
+        this._navigateBy(-1);
+    }
+
+    public navigatePageDown(): void {
+        this._navigateBy(this._halfPageRows());
+    }
+
+    public navigatePageUp(): void {
+        this._navigateBy(-this._halfPageRows());
+    }
+
+    // Number of rows in half of the visible list, like Vim Ctrl+D / Ctrl+U
+    private _halfPageRows(): number {
+        const viewport = this.listBox.get_ancestor(Gtk.Viewport.$gtype);
+        const row =
+            this.listBox.get_selected_row() ?? this.listBox.get_row_at_index(0);
+        if (!viewport || !row || row.get_height() === 0) return 1;
+
+        const visibleRows = viewport.get_height() / row.get_height();
+        return Math.max(1, Math.floor(visibleRows / 2));
+    }
+
+    private _navigateBy(offset: number): void {
         this.enableMode();
         const selectedRow = this.listBox.get_selected_row();
         if (!selectedRow) {
@@ -86,12 +94,13 @@ export class VimNavigator {
             return;
         }
 
-        const currentIndex = selectedRow.get_index();
-        if (currentIndex > 0) {
-            const prevRow = this.listBox.get_row_at_index(currentIndex - 1);
-            if (prevRow) {
-                this._selectRow(prevRow);
-            }
+        // Stop at the first or last row
+        const index = Math.max(0, selectedRow.get_index() + offset);
+        const row = this.listBox.get_row_at_index(index);
+        if (row) {
+            this._selectRow(row);
+        } else {
+            this.navigateLast();
         }
     }
 

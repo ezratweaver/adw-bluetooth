@@ -33,6 +33,18 @@ export const SHORTCUTS = {
         action: "win.vim-last",
         title: "Go to last device",
     },
+    pageDown: {
+        key: "shortcut-page-down",
+        action: "win.vim-page-down",
+        title: "Half page down",
+        fixed: "Page Down",
+    },
+    pageUp: {
+        key: "shortcut-page-up",
+        action: "win.vim-page-up",
+        title: "Half page up",
+        fixed: "Page Up",
+    },
     toggleDiscovery: {
         key: "shortcut-toggle-discovery",
         action: "win.toggle-discovery",

@@ -90,6 +90,22 @@ export class Window extends Adw.ApplicationWindow {
 
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
+                action: new Gtk.NamedAction({
+                    action_name: "win.vim-page-down",
+                }),
+                trigger: Gtk.ShortcutTrigger.parse_string("Page_Down"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
+                action: new Gtk.NamedAction({ action_name: "win.vim-page-up" }),
+                trigger: Gtk.ShortcutTrigger.parse_string("Page_Up"),
+            }),
+        );
+
+        Gtk.Widget.add_shortcut(
+            new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-select" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("Return"),
             }),
@@ -279,6 +295,8 @@ export class Window extends Adw.ApplicationWindow {
             ["vim-select", () => this._vimNavigator.selectCurrent()],
             ["vim-first", () => this._vimNavigator.navigateFirst()],
             ["vim-last", () => this._vimNavigator.navigateLast()],
+            ["vim-page-down", () => this._vimNavigator.navigatePageDown()],
+            ["vim-page-up", () => this._vimNavigator.navigatePageUp()],
         ];
 
         for (const [name, handler] of vimActions) {

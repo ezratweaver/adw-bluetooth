@@ -32,6 +32,16 @@
       <summary>Shortcut: Go to last device</summary>
     </key>
 
+    <key name="shortcut-page-down" type="s">
+      <default>"&lt;Control&gt;d"</default>
+      <summary>Shortcut: Half page down</summary>
+    </key>
+
+    <key name="shortcut-page-up" type="s">
+      <default>"&lt;Control&gt;u"</default>
+      <summary>Shortcut: Half page up</summary>
+    </key>
+
     <key name="shortcut-toggle-discovery" type="s">
       <default>"d"</default>
       <summary>Shortcut: Toggle discovery mode</summary>

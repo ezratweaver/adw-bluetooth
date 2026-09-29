@@ -87,6 +87,8 @@ export class ShortcutsWindow extends Adw.Dialog {
                 this._createEditableRow(SHORTCUTS.moveUp),
                 this._createEditableRow(SHORTCUTS.first),
                 this._createEditableRow(SHORTCUTS.last),
+                this._createEditableRow(SHORTCUTS.pageDown),
+                this._createEditableRow(SHORTCUTS.pageUp),
             ]),
         );
 
