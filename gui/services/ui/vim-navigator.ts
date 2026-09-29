@@ -45,6 +45,16 @@ export class VimNavigator {
         return this._vimModeActive;
     }
 
+    private _selectRow(row: Gtk.ListBoxRow): void {
+        this.listBox.select_row(row);
+
+        // Scroll the list so the selected row stays visible
+        const viewport = this.listBox.get_ancestor(
+            Gtk.Viewport.$gtype,
+        ) as Gtk.Viewport | null;
+        viewport?.scroll_to(row, null);
+    }
+
     public navigateDown(): void {
         this.enableMode();
         const selectedRow = this.listBox.get_selected_row();
@@ -52,7 +62,7 @@ export class VimNavigator {
             // If no row is selected, select the first one
             const firstRow = this.listBox.get_row_at_index(0);
             if (firstRow) {
-                this.listBox.select_row(firstRow);
+                this._selectRow(firstRow);
             }
             return;
         }
@@ -60,7 +70,7 @@ export class VimNavigator {
         const currentIndex = selectedRow.get_index();
         const nextRow = this.listBox.get_row_at_index(currentIndex + 1);
         if (nextRow) {
-            this.listBox.select_row(nextRow);
+            this._selectRow(nextRow);
         }
     }
 
@@ -71,7 +81,7 @@ export class VimNavigator {
             // If no row is selected, select the first one
             const firstRow = this.listBox.get_row_at_index(0);
             if (firstRow) {
-                this.listBox.select_row(firstRow);
+                this._selectRow(firstRow);
             }
             return;
         }
@@ -80,7 +90,7 @@ export class VimNavigator {
         if (currentIndex > 0) {
             const prevRow = this.listBox.get_row_at_index(currentIndex - 1);
             if (prevRow) {
-                this.listBox.select_row(prevRow);
+                this._selectRow(prevRow);
             }
         }
     }
@@ -89,7 +99,7 @@ export class VimNavigator {
         this.enableMode();
         const firstRow = this.listBox.get_row_at_index(0);
         if (firstRow) {
-            this.listBox.select_row(firstRow);
+            this._selectRow(firstRow);
         }
     }
 
@@ -105,7 +115,7 @@ export class VimNavigator {
             index++;
         }
         if (lastRow) {
-            this.listBox.select_row(lastRow);
+            this._selectRow(lastRow);
         }
     }
 
