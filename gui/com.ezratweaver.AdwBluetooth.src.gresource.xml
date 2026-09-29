@@ -7,7 +7,8 @@
     <file>ui/pin-confirmation.js</file>
     <file>ui/file-transfer-progress.js</file>
     <file>ui/shortcuts-window.js</file>
-    <file>services/gsettings.js</file>
+    <file>services/gsettings/settings.js</file>
+    <file>services/gsettings/shortcuts.js</file>
     <file>services/formatting.js</file>
     <file>services/dialog.js</file>
     <file>services/filesystem.js</file>

@@ -12,5 +12,30 @@
       <description>Path of the last used Bluetooth adapter to restore on startup</description>
     </key>
 
+    <key name="shortcut-move-down" type="s">
+      <default>"j"</default>
+      <summary>Shortcut: Move down</summary>
+    </key>
+
+    <key name="shortcut-move-up" type="s">
+      <default>"k"</default>
+      <summary>Shortcut: Move up</summary>
+    </key>
+
+    <key name="shortcut-first" type="s">
+      <default>"g"</default>
+      <summary>Shortcut: Go to first device</summary>
+    </key>
+
+    <key name="shortcut-last" type="s">
+      <default>"&lt;Shift&gt;g"</default>
+      <summary>Shortcut: Go to last device</summary>
+    </key>
+
+    <key name="shortcut-toggle-discovery" type="s">
+      <default>"d"</default>
+      <summary>Shortcut: Toggle discovery mode</summary>
+    </key>
+
 	</schema>
 </schemalist>

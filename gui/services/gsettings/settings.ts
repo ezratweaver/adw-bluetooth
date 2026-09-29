@@ -6,7 +6,7 @@ interface DeviceHistory {
     [key: string]: number;
 }
 
-const settings = new Gio.Settings({
+export const settings = new Gio.Settings({
     schema_id: "com.ezratweaver.AdwBluetooth",
 });
 

@@ -12,6 +12,12 @@ import { findDeviceByPath } from "../services/find-by-device.js";
 import { IncomingTransferManager } from "../services/ui/incoming-transfer-manager.js";
 import { VimNavigator } from "../services/ui/vim-navigator.js";
 import { ShortcutsWindow } from "./shortcuts-window.js";
+import {
+    SHORTCUTS,
+    getShortcut,
+    onShortcutChanged,
+    resetShortcut,
+} from "../services/gsettings/shortcuts.js";
 import GLib from "gi://GLib?version=2.0";
 
 export class Window extends Adw.ApplicationWindow {
@@ -67,25 +73,11 @@ export class Window extends Adw.ApplicationWindow {
             }),
         );
 
-        // Vim-style and arrow key navigation shortcuts
-        Gtk.Widget.add_shortcut(
-            new Gtk.Shortcut({
-                action: new Gtk.NamedAction({ action_name: "win.vim-down" }),
-                trigger: Gtk.ShortcutTrigger.parse_string("j"),
-            }),
-        );
-
+        // Arrow key navigation shortcuts
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
                 action: new Gtk.NamedAction({ action_name: "win.vim-down" }),
                 trigger: Gtk.ShortcutTrigger.parse_string("Down"),
-            }),
-        );
-
-        Gtk.Widget.add_shortcut(
-            new Gtk.Shortcut({
-                action: new Gtk.NamedAction({ action_name: "win.vim-up" }),
-                trigger: Gtk.ShortcutTrigger.parse_string("k"),
             }),
         );
 
@@ -110,29 +102,6 @@ export class Window extends Adw.ApplicationWindow {
             }),
         );
 
-        Gtk.Widget.add_shortcut(
-            new Gtk.Shortcut({
-                action: new Gtk.NamedAction({ action_name: "win.vim-first" }),
-                trigger: Gtk.ShortcutTrigger.parse_string("g"),
-            }),
-        );
-
-        Gtk.Widget.add_shortcut(
-            new Gtk.Shortcut({
-                action: new Gtk.NamedAction({ action_name: "win.vim-last" }),
-                trigger: Gtk.ShortcutTrigger.parse_string("<Shift>g"),
-            }),
-        );
-
-        Gtk.Widget.add_shortcut(
-            new Gtk.Shortcut({
-                action: new Gtk.NamedAction({
-                    action_name: "win.toggle-discovery",
-                }),
-                trigger: Gtk.ShortcutTrigger.parse_string("d"),
-            }),
-        );
-
         // Show shortcuts window
         Gtk.Widget.add_shortcut(
             new Gtk.Shortcut({
@@ -148,6 +117,7 @@ export class Window extends Adw.ApplicationWindow {
         super(params);
 
         this._setupActions();
+        this._setupShortcuts();
         this._setupDeviceList();
         this._initializeAdapter();
         this._setupSignalHandlers();
@@ -232,6 +202,38 @@ export class Window extends Adw.ApplicationWindow {
                 return true;
             },
         );
+    }
+
+    private _setupShortcuts(): void {
+        const controller = new Gtk.ShortcutController();
+
+        for (const definition of Object.values(SHORTCUTS)) {
+            const shortcut = new Gtk.Shortcut({
+                action: new Gtk.NamedAction({
+                    action_name: definition.action,
+                }),
+            });
+
+            const updateTrigger = () => {
+                const value = getShortcut(definition.key);
+                const trigger = Gtk.ShortcutTrigger.parse_string(value);
+                if (!trigger) {
+                    // Reset triggers this handler again with the default
+                    log(
+                        `Invalid shortcut "${value}" for ${definition.key}, resetting`,
+                    );
+                    resetShortcut(definition.key);
+                    return;
+                }
+                shortcut.set_trigger(trigger);
+            };
+
+            updateTrigger();
+            onShortcutChanged(definition.key, updateTrigger);
+            controller.add_shortcut(shortcut);
+        }
+
+        this.add_controller(controller);
     }
 
     private _setupActions(): void {
@@ -690,11 +692,12 @@ export class Window extends Adw.ApplicationWindow {
                 });
             }
 
-            const action = !device.paired
-                ? "pair with"
-                : device.connected
-                  ? "disconnect from"
-                  : "connect to";
+            let action = "connect to";
+            if (!device.paired) {
+                action = "pair with";
+            } else if (device.connected) {
+                action = "disconnect from";
+            }
 
             log(`An error occurred while trying to ${action} device: ${error}`);
 
