@@ -1,37 +1,17 @@
-<h1>
-<p align="center">
-  <img width="80" height="100" alt="bluetooth" src="https://github.com/user-attachments/assets/f9f9e18c-2cd3-48f6-a465-d228b2f223c3" />
-  <br>
+<h1 align="center">
+  <img width="80" height="100" alt="Adwaita Bluetooth icon" src="https://github.com/user-attachments/assets/f9f9e18c-2cd3-48f6-a465-d228b2f223c3" />
   <br>
   Adwaita Bluetooth
 </h1>
 <p align="center">
-    A fully featured GNOME inspired Bluetooth device manager built with GTK4 and Libadwaita.
-    <br />
-</p>
+  A Bluetooth device manager for Hyprland, Niri, and other tiling window managers, built with GTK4 and Libadwaita.
 </p>
 
-![adw-bluetooth-1-0-0](https://github.com/user-attachments/assets/4ebfe0a8-9296-4c2d-b216-183a1bc4f902)
+<p align="center">
+  Pair and connect devices, check battery levels, and transfer files without installing the full GNOME desktop.
+</p>
 
-## About This Project
-
-A fully featured bluetooth device manager built for tiling window managers like Hyprland and Niri. For NixOS and Arch Linux users who want GNOME's Bluetooth functionality without the full GNOME desktop.
-
-## Features
-
-- **Device Discovery:** Scan for and discover nearby Bluetooth devices.
-- **Pairing & Connecting:** Easily pair with and connect to devices.
-- **Battery Info:** View and monitor device battery information.
-- **File Transfer:** Send and receive files to and from other devices.
-- **Multi-Adapter Support:** Switch between adapter hardware.
-- **Modern UI:** A clean and modern user interface using Adwaita.
-- **Vim Keybindings:** Navigate and manage devices with vim-like keybindings.
-  - `j`/`↓`: Move down
-  - `k`/`↑`: Move up
-  - `g`: Go to first device
-  - `Shift+g`: Go to last device
-  - `Enter`/`Space`: Pair, connect, or disconnect device
-  - `d`: Toggle discovery mode
+![Adwaita Bluetooth device manager](https://github.com/user-attachments/assets/4ebfe0a8-9296-4c2d-b216-183a1bc4f902)
 
 ## Installation
 
@@ -47,7 +27,27 @@ yay -S adw-bluetooth
 services.adw-bluetooth.enable = true;
 ```
 
-## Compiling from source
+## Features
+
+- **Device discovery:** Scan for nearby Bluetooth devices.
+- **Pairing and connections:** Pair with, connect to, and disconnect devices.
+- **Battery information:** Check battery levels for devices that report them.
+- **File transfer:** Send files to and receive files from other devices.
+- **Multiple adapters:** Switch between Bluetooth adapters.
+- **Keyboard controls:** Navigate and manage devices with Vim shortcuts.
+
+## Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| `j` / `↓` | Move down |
+| `k` / `↑` | Move up |
+| `g` | Go to the first device |
+| `Shift+g` | Go to the last device |
+| `Enter` / `Space` | Pair, connect, or disconnect the selected device |
+| `d` | Turn discovery on or off |
+
+## Building from source
 
 ### Dependencies
 
