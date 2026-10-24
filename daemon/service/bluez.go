@@ -76,6 +76,11 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesAdded(signal *dbus.Signal) {
 		daemon.adapters[path] = a
 		logger.L.Info("Adapter added", "path", path, "alias", a.Alias)
 		connection.EmitDaemonSignal("AdapterAdded", a)
+
+		if daemon.activeAdapter == "" {
+			daemon.activeAdapter = path
+			logger.L.Info("Active adapter set", "path", path)
+		}
 	}
 
 	// if its an interface of the current adapter
@@ -127,6 +132,15 @@ func (daemon *AdwBluetoothDaemon) handleInterfacesRemoved(signal *dbus.Signal) {
 		delete(daemon.adapters, path)
 		logger.L.Info("Adapter removed", "path", path)
 		connection.EmitDaemonSignal("AdapterRemoved", path)
+
+		if path == daemon.activeAdapter {
+			for devicePath := range daemon.devices {
+				connection.EmitDaemonSignal("DeviceRemoved", devicePath)
+			}
+			daemon.devices = make(map[dbus.ObjectPath]Device)
+			daemon.limboDevices = make(map[dbus.ObjectPath]Device)
+			daemon.activeAdapter = ""
+		}
 	}
 
 	if slices.Contains(interfaces, "org.bluez.Device1") {
